@@ -1,324 +1,164 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import DesignLab from './labs/DesignLab';
+import VisualLab from './labs/VisualLab';
+import CodeLab from './labs/CodeLab';
+import QuizLab from './labs/QuizLab';
+import MissionLab from './labs/MissionLab'; // 👑 修行モード
+import WorkLab from './labs/WorkLab';       // 👑 完全自由制作モード
+import ProjectLab from './labs/ProjectLab';
 
-type Mode = 'top' | 'design' | 'visual' | 'code' | 'quiz' | 'work' | 'project';
-type TechType = 'html-css' | 'wordpress';
-type MethodType = 'nocode' | 'code'; // 新機能：作り方の種類
+type Mode = 'top' | 'design' | 'visual' | 'code' | 'quiz' | 'mission' | 'work' | 'project';
+
+interface ProjectItem {
+  name: string;
+  code: string;
+}
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('top');
-  const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // --- 技術とアプローチの切り替え ---
-  const [selectedTech, setSelectedTech] = useState<TechType>('html-css');
-  const [selectedMethod, setSelectedMethod] = useState<MethodType>('nocode'); // 新機能：ノーコード or コード入力
-
-  // --- Design Lab用の状態（State） ---
-  const [buttonText, setButtonText] = useState('詳しくはこちら'); // 新機能：ボタンの文字
-  const [bgColor, setBgColor] = useState('#3498db');
-  const [borderRadius, setBorderRadius] = useState(12);
-  const [paddingX, setPaddingX] = useState(24);
-  const [paddingY, setPaddingY] = useState(12);
-  const [shadowBlur, setShadowBlur] = useState(8);
-  const [hoverScale, setHoverScale] = useState(105); // %
-
-  // 新機能：コード入力モード用のテキストエリアの状態
-  const [customCSS, setCustomCSS] = useState('');
-
-  // スライダーの値が変わるたびに、コード入力用のCSSテキストも自動更新する
-  useEffect(() => {
-    const css = selectedTech === 'wordpress' 
-? `.wp-block-button__link {
-  background-color: ${bgColor} !important;
-  border-radius: ${borderRadius}px !important;
-  padding: ${paddingY}px ${paddingX}px !important;
-  box-shadow: 0 4px ${shadowBlur}px rgba(0, 0, 0, 0.4) !important;
-  color: #ffffff !important;
-  font-weight: bold !important;
-  border: none !important;
-  transition: transform 0.2s ease !important;
-}
-.wp-block-button__link:hover {
-  transform: scale(${hoverScale / 100}) !important;
-}`
-: `.custom-button {
-  background-color: ${bgColor};
-  border-radius: ${borderRadius}px;
-  padding: ${paddingY}px ${paddingX}px;
-  box-shadow: 0 4px ${shadowBlur}px rgba(0, 0, 0, 0.3);
-  color: #ffffff;
-  font-weight: bold;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-.custom-button:hover {
-  transform: scale(${hoverScale / 100});
-}`;
-    
-    // ユーザーが「コード入力モード」で直接ガリガリ書いていない時だけ同期する
-    if (selectedMethod === 'nocode') {
-      setCustomCSS(css);
+  
+  // 初期の実績ポートフォリオデータ
+  const [projects, setProjects] = useState<ProjectItem[]>([
+    {
+      name: 'Welcome_Site.html',
+      code: `<div style="padding:20px; background:#1e1e1e; border:1px solid #3c3c3c; border-radius:4px; text-align:center; color:#4fc1ff; font-family:monospace;">console.log("Welcome to CodePlayground!");</div>`
     }
-  }, [bgColor, borderRadius, paddingX, paddingY, shadowBlur, hoverScale, selectedTech, selectedMethod]);
+  ]);
 
-  // 初回起動時の読み込み
-  useEffect(() => {
-    const saved = localStorage.getItem('codeplayground_design_preset');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setBgColor(parsed.bgColor);
-      setBorderRadius(parsed.borderRadius);
-      setPaddingX(parsed.paddingX);
-      setPaddingY(parsed.paddingY);
-      setShadowBlur(parsed.shadowBlur);
-      setHoverScale(parsed.hoverScale);
-      if (parsed.buttonText) setButtonText(parsed.buttonText);
-    }
-  }, []);
-
-  const saveToLocal = () => {
-    const data = { bgColor, borderRadius, paddingX, paddingY, shadowBlur, hoverScale, buttonText };
-    localStorage.setItem('codeplayground_design_preset', JSON.stringify(data));
-    alert('ブラウザ/アプリ内に進捗を保存しました！');
-  };
-
-  const downloadFiles = () => {
-    // 現在使っているCSS（ノーコードなら自動生成、コード入力ならユーザーが書いたもの）
-    const finalCSS = customCSS;
-
-    if (selectedTech === 'wordpress') {
-      const readmeContent = `【WordPressカスタム体験 成果物】\n\nこのテキスト内のCSSコードをコピーして使用してください。`;
-      const txtBlob = new Blob([readmeContent + "\n\n" + finalCSS], { type: 'text/plain' });
-      const txtLink = document.createElement('a');
-      txtLink.href = URL.createObjectURL(txtBlob);
-      txtLink.download = 'wordpress-style.txt';
-      txtLink.click();
-      return;
-    }
-
-    const htmlContent = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>CodePlayground Output</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body style="background: #111827; display: flex; justify-content: center; align-items: center; height: 100vh;">
-    <button class="custom-button">${buttonText}</button>
-</body>
-</html>`;
-
-    const cssBlob = new Blob([finalCSS], { type: 'text/css' });
-    const cssLink = document.createElement('a');
-    cssLink.href = URL.createObjectURL(cssBlob);
-    cssLink.download = 'style.css';
-    cssLink.click();
-
-    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-    const htmlLink = document.createElement('a');
-    htmlLink.href = URL.createObjectURL(htmlBlob);
-    htmlLink.download = 'index.html';
-    htmlLink.click();
+  const addProject = (projectName: string, htmlContent: string) => {
+    setProjects((prev) => [...prev, { name: projectName, code: htmlContent }]);
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} transition-colors duration-200 font-sans`}>
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:3rem_3rem] opacity-20 -z-10" />
-
-      {/* ヘッダー */}
-      <header className="border-b border-slate-800 px-6 py-4 flex justify-between items-center bg-slate-900/50 backdrop-blur">
-        <h1 className="text-xl font-bold tracking-wider text-cyan-400 cursor-pointer" onClick={() => setMode('top')}>
-          &lt;CodePlayground /&gt;
-        </h1>
-        <div className="flex items-center gap-4">
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-lg bg-slate-800 text-sm border border-slate-700 text-white">
-            {isDarkMode ? '🌙 DARK' : '☀️ LIGHT'}
-          </button>
-          {mode !== 'top' && (
-            <button onClick={() => setMode('top')} className="text-sm text-slate-400 hover:text-white transition">
-              ← トップに戻る
-            </button>
-          )}
+    <div className="min-h-screen bg-[#1e1e1e] text-[#d4d4d4] font-mono flex flex-col select-none">
+      
+      {/* 💻 最上部：VS Code風 タイトルバー */}
+      <header className="bg-[#3c3c3c] text-[#a6a6a6] text-xs px-4 py-1.5 flex justify-between items-center border-b border-[#2b2b2b]">
+        <div className="flex items-center gap-2">
+          <span className="text-cyan-400 font-bold">🔵</span>
+          <span>CodePlayground - Visual Studio Code風モード</span>
+        </div>
+        <div className="text-[11px] text-[#808080]">App.tsx - workspace</div>
+        <div className="flex gap-3 text-[11px]">
+          <span>ファイル(F)</span><span>編集(E)</span><span>選択(S)</span>
         </div>
       </header>
 
-      {/* メイン */}
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        {mode === 'top' && (
-          <div className="text-center">
-            <h2 className="text-3xl font-extrabold mb-2">ITの世界を体験しよう</h2>
-            <p className="text-slate-400 mb-12 text-sm">ゲーム感覚でプログラミングや制作の仕事を学べる体験型 playground</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <button onClick={() => setMode('design')} className="p-6 bg-slate-900/60 border border-slate-800 hover:border-emerald-500 rounded-xl text-left transition group">
-                <div className="text-2xl mb-2 group-hover:scale-110 transition">🎨</div>
-                <h3 className="font-bold text-lg text-white">Design Lab</h3>
-                <p className="text-xs text-slate-400 mt-1">ボタンデザインを通じて、CSSやWordPressの仕組みを体験します。</p>
-              </button>
-              {['visual', 'code', 'quiz', 'work', 'project'].map((m) => (
-                <div key={m} className="p-6 bg-slate-900/20 border border-slate-900 rounded-xl text-left opacity-50 cursor-not-allowed">
-                  <div className="text-2xl mb-2">🔒</div>
-                  <h3 className="font-bold text-lg capitalize text-slate-500">{m} Lab</h3>
-                  <p className="text-xs text-slate-500 mt-1">今後のアップデートで解放されます。</p>
-                </div>
-              ))}
+      {/* 🗂️ メインレイアウト */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* 🎛️ 左端：アクティビティバー（縦アイコン） */}
+        <aside className="w-12 bg-[#333333] border-r border-[#2b2b2b] flex flex-col items-center py-4 gap-6 text-xl text-[#858585]">
+          <button onClick={() => setMode('top')} className={`hover:text-white transition ${mode === 'top' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📁</button>
+          <button onClick={() => setMode('mission')} className={`hover:text-white transition ${mode === 'mission' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📝</button>
+          <button onClick={() => setMode('work')} className={`hover:text-white transition ${mode === 'work' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>💼</button>
+          <button onClick={() => setMode('visual')} className={`hover:text-white transition ${mode === 'visual' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>👁️</button>
+          <button onClick={() => setMode('design')} className={`hover:text-white transition ${mode === 'design' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>🎨</button>
+          <button onClick={() => setMode('code')} className={`hover:text-white transition ${mode === 'code' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>💻</button>
+          <button onClick={() => setMode('quiz')} className={`hover:text-white transition ${mode === 'quiz' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>❓</button>
+          <button onClick={() => setMode('project')} className={`hover:text-white transition ${mode === 'project' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>🚀</button>
+        </aside>
+
+        {/* 📂 左サイドバー：ファイルエクスプローラー */}
+        <nav className="w-60 bg-[#252526] border-r border-[#2b2b2b] p-4 hidden md:flex flex-col text-left text-xs text-[#cccccc]">
+          <div className="font-bold text-[10px] text-[#858585] uppercase tracking-wider mb-3">エクスプローラー</div>
+          <div className="space-y-1">
+            <div className="text-[#858585] font-bold">▼ src / labs</div>
+            <button onClick={() => setMode('top')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'top' ? 'bg-[#37373d] text-white font-bold' : ''}`}>🏠 Welcome.md</button>
+            <button onClick={() => setMode('mission')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'mission' ? 'bg-[#37373d] text-amber-400 font-bold border-l-2 border-amber-500' : ''}`}>📝 MissionLab.json (修行)</button>
+            <button onClick={() => setMode('work')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'work' ? 'bg-[#37373d] text-emerald-400 font-bold border-l-2 border-emerald-500' : ''}`}>💼 WorkLab.tsx (自由制作空間)</button>
+            <button onClick={() => setMode('visual')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'visual' ? 'bg-[#37373d] text-white' : ''}`}>👁️ VisualLab.tsx</button>
+            <button onClick={() => setMode('design')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'design' ? 'bg-[#37373d] text-white' : ''}`}>🎨 DesignLab.tsx</button>
+            <button onClick={() => setMode('code')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'code' ? 'bg-[#37373d] text-white' : ''}`}>💻 CodeLab.js</button>
+            <button onClick={() => setMode('quiz')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'quiz' ? 'bg-[#37373d] text-white' : ''}`}>❓ QuizLab.json</button>
+            <button onClick={() => setMode('project')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'project' ? 'bg-[#37373d] text-white' : ''}`}>🚀 ProjectLab.html</button>
+          </div>
+        </nav>
+
+        {/* 📄 右側：メインコンテンツ表示エリア */}
+        <main className="flex-1 flex flex-col bg-[#1e1e1e] overflow-y-auto">
+          
+          {/* 上部タブバー */}
+          <div className="bg-[#2d2d2d] flex border-b border-[#2b2b2b] text-xs">
+            <div className="bg-[#1e1e1e] text-white px-4 py-2 border-t-2 border-cyan-400">
+              {mode === 'top' ? 'Welcome.md' : `${mode.toUpperCase()}LAB.tsx`}
             </div>
           </div>
-        )}
 
-        {/* 🎨 Design Lab 画面 */}
-        {mode === 'design' && (
-          <div className="space-y-6">
+          <div className="p-8 max-w-5xl w-full mx-auto">
             
-            {/* 上部コントロールバー：道具と方法の切り替え */}
-            <div className="flex flex-wrap gap-6 p-4 bg-slate-900/40 border border-slate-800 rounded-xl justify-between items-center">
-              <div className="flex gap-4 items-center">
-                <span className="text-sm font-semibold text-slate-400">体験するシステム:</span>
-                <div className="bg-slate-950 p-1 rounded-lg border border-slate-800 flex">
-                  <button onClick={() => setSelectedTech('html-css')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${selectedTech === 'html-css' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>標準 HTML / CSS</button>
-                  <button onClick={() => setSelectedTech('wordpress')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${selectedTech === 'wordpress' ? 'bg-blue-500 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>WordPress風カスタム</button>
+           {/* 🏠 TOP MENU (VS Code風ウェルカム画面：完全版) */}
+            {mode === 'top' && (
+              <div className="text-left space-y-8">
+                <div>
+                  <h2 className="text-3xl font-light text-white mb-2">Visual Studio Code <span className="text-[#858585] font-light">Mode</span></h2>
+                  <p className="text-[#717171] text-sm font-mono">ゲーム感覚でIT技術を学び、ゼロから自由にモノづくりができる特別ワークスペース。</p>
                 </div>
-              </div>
-
-              <div className="flex gap-4 items-center">
-                <span className="text-sm font-semibold text-slate-400">作り方:</span>
-                <div className="bg-slate-950 p-1 rounded-lg border border-slate-800 flex">
-                  <button onClick={() => setSelectedMethod('nocode')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${selectedMethod === 'nocode' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>かんたん設定 (ノーコード)</button>
-                  <button onClick={() => setSelectedMethod('code')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${selectedMethod === 'code' ? 'bg-cyan-500 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>コード入力 (エディタ)</button>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* 左側：操作エリア（切り替え式） */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-6">
-                <h3 className="font-bold text-md text-slate-400 uppercase tracking-wider">
-                  {selectedMethod === 'nocode' ? '⚙️ 設定パネル' : '💻 コードエディタ'}
-                </h3>
                 
-                {/* 新機能：ボタンの文字変更（どっちのモードでも表示） */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-medium text-slate-400">ボタンの文字 (Text)</label>
-                  <input 
-                    type="text" 
-                    value={buttonText} 
-                    onChange={(e) => setButtonText(e.target.value)} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-medium text-slate-200 focus:outline-none focus:border-cyan-500"
-                    placeholder="ボタンの文字を入力..."
-                  />
-                </div>
+                <hr className="border-[#2b2b2b]" />
 
-                {selectedMethod === 'nocode' ? (
-                  /* 【A】ノーコード（スライダー群） */
-                  <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* 💪 メインの実践・開発エリア */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">▼ Mainクリエイティブ（お仕事・自由制作）</h3>
                     <div className="space-y-2">
-                      <label className="block text-xs font-medium text-slate-400">背景色 (Background Color)</label>
-                      <div className="flex items-center gap-4">
-                        <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-10 h-10 rounded bg-transparent cursor-pointer border-0" />
-                        <span className="font-mono text-sm bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-300">{bgColor}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs"><span className="text-slate-400">角の丸み</span><span className="text-cyan-400 font-mono">{borderRadius}px</span></div>
-                      <input type="range" min="0" max="30" value={borderRadius} onChange={(e) => setBorderRadius(Number(e.target.value))} className="w-full accent-cyan-500" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs"><span className="text-slate-400">横の余白</span><span className="text-cyan-400 font-mono">{paddingX}px</span></div>
-                      <input type="range" min="10" max="50" value={paddingX} onChange={(e) => setPaddingX(Number(e.target.value))} className="w-full accent-cyan-500" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs"><span className="text-slate-400">縦の余白</span><span className="text-cyan-400 font-mono">{paddingY}px</span></div>
-                      <input type="range" min="5" max="30" value={paddingY} onChange={(e) => setPaddingY(Number(e.target.value))} className="w-full accent-cyan-500" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs"><span className="text-slate-400">影のぼかし</span><span className="text-cyan-400 font-mono">{shadowBlur}px</span></div>
-                      <input type="range" min="0" max="20" value={shadowBlur} onChange={(e) => setShadowBlur(Number(e.target.value))} className="w-full accent-cyan-500" />
+                      <button onClick={() => setMode('mission')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
+                        <div className="text-xs font-bold text-amber-400 group-hover:text-amber-300 transition"> Pand 📝 Mission Lab (全20ステージの修行)</div>
+                        <div className="text-[11px] text-[#858585] mt-1">解説と答えを確認しながら、お題に沿ってHP制作・WPテーマ開発の基本をマスターする。</div>
+                      </button>
+                      <button onClick={() => setMode('work')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
+                        <div className="text-xs font-bold text-emerald-400 group-hover:text-emerald-300 transition">💼 Work Lab (完全自由な一から制作スペース)</div>
+                        <div className="text-[11px] text-[#858585] mt-1">縛りは一切なし。真っ白なエディタから、あなたの好きなサイトやブログを1から自由に創り上げる空間。</div>
+                      </button>
                     </div>
                   </div>
-                ) : (
-                  /* 【B】コード入力（プロっぽテキストエリア） */
-                  <div className="space-y-2 flex-1 flex flex-col">
-                    <label className="block text-xs font-medium text-slate-400">CSSを自由に書き換えてみよう！</label>
-                    <textarea 
-                      value={customCSS} 
-                      onChange={(e) => setCustomCSS(e.target.value)}
-                      rows={11}
-                      className="w-full bg-slate-950 text-emerald-400 p-4 rounded-xl font-mono text-xs border border-slate-800 focus:border-cyan-500 outline-none resize-none leading-relaxed"
-                    />
-                    <p className="text-[11px] text-slate-500">※（注意）コード入力モード中の変更はスライダーには連動しません。本物のコードをいじる体験です！</p>
-                  </div>
-                )}
 
-                <button onClick={saveToLocal} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-sm font-medium rounded-lg transition border border-slate-700 text-white">
-                  📁 現在の設定をローカルに保存
-                </button>
-              </div>
-
-              {/* 右側：プレビューエリア */}
-              <div className="flex flex-col gap-6">
-                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 flex-1 flex flex-col justify-between">
-                  <h3 className="font-bold text-md text-slate-400 uppercase tracking-wider mb-4">Preview</h3>
-                  
-                  {/* ★コード入力時はHTMLの中に直接カスタムCSSを適用するスタイルタグを仕込むアプローチ */}
-                  <div className="flex-1 min-h-[160px] bg-slate-950 rounded-lg border border-slate-800 flex flex-col items-center justify-center relative p-4 overflow-hidden">
-                    {selectedTech === 'wordpress' && (
-                      <div className="absolute top-2 left-4 text-[10px] text-slate-600 font-mono w-full text-left">📄 投稿記事: 「おすすめのカフェ10選」</div>
-                    )}
-
-                    {/* コード入力モードの時のCSSをリアルタイムにこの画面だけに適用する魔法のタグ */}
-                    <style>{customCSS}</style>
-
-                    <button
-                      className={selectedMethod === 'code' 
-                        ? (selectedTech === 'wordpress' ? 'wp-block-button__link' : 'custom-button') 
-                        : "font-bold text-white border-none cursor-pointer"
-                      }
-                      style={selectedMethod === 'nocode' ? {
-                        backgroundColor: bgColor,
-                        borderRadius: `${borderRadius}px`,
-                        padding: `${paddingY}px ${paddingX}px`,
-                        boxShadow: `0 4px ${shadowBlur}px rgba(0,0,0,0.4)`,
-                        transition: 'transform 0.2s ease',
-                      } : {}}
-                      onMouseEnter={(e) => {
-                        if (selectedMethod === 'nocode') e.currentTarget.style.transform = `scale(${hoverScale / 100})`;
-                      }}
-                      onMouseLeave={(e) => {
-                        if (selectedMethod === 'nocode') e.currentTarget.style.transform = 'scale(1)';
-                      }}
-                    >
-                      {buttonText}
+                  {/* 🎨 基礎をじっくり学ぶエリア */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-[#858585] uppercase tracking-wider">▼ Basicトレーニング（基礎・実験室）</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { id: 'visual', title: '👁️ Visual Lab', desc: 'ブロックを並び替えてWebのレイアウトを学ぶ' },
+                        { id: 'design', title: '🎨 Design Lab', desc: 'ボタンやパーツの色・影をCSSコード化する' },
+                        { id: 'code', title: '💻 Code Lab', desc: 'JavaScriptのバグを見つけて修正する' },
+                        { id: 'quiz', title: '❓ Quiz Lab', desc: 'ITの必須基礎知識クイズに挑戦する' }
+                      ].map((btn) => (
+                        <button key={btn.id} onClick={() => setMode(btn.id as Mode)} className="text-left p-3 bg-[#252526]/60 hover:bg-[#2d2d2d] border border-[#2b2b2b] rounded group transition">
+                          <div className="text-xs font-bold text-[#cccccc] group-hover:text-cyan-400 transition">{btn.title}</div>
+                          <div className="text-[10px] text-[#717171] mt-1 leading-relaxed">{btn.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* 実績確認へのショートカット */}
+                    <button onClick={() => setMode('project')} className="w-full text-left p-2.5 bg-[#252526]/30 hover:bg-[#2d2d2d] border border-[#2b2b2b] rounded text-[11px] text-slate-400 hover:text-white transition flex justify-between items-center">
+                      <span>🚀 制作した実績ポートフォリオ（Project Lab）を見る</span>
+                      <span>→</span>
                     </button>
                   </div>
-
-                  <div className="mt-4 flex gap-3">
-                    <button onClick={() => { navigator.clipboard.writeText(customCSS); alert('CSSをコピーしました！'); }} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium border border-slate-700 text-white">
-                      📋 コードをコピー
-                    </button>
-                    <button onClick={downloadFiles} className={`flex-1 py-2 rounded-lg text-xs font-medium text-white ${selectedTech === 'wordpress' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-cyan-600 hover:bg-cyan-500'}`}>
-                      📥 成果物をダウンロード
-                    </button>
-                  </div>
-                </div>
-
-                {/* 生成されたコード表示（ノーコード時のみ、またはコード入力時の確認用） */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 h-48 flex flex-col">
-                  <h3 className="font-bold text-md text-slate-400 uppercase tracking-wider mb-2">CSS 出力</h3>
-                  <pre className="flex-1 bg-slate-950 p-3 rounded-lg font-mono text-xs text-emerald-400 overflow-y-auto border border-slate-800 whitespace-pre-wrap text-left">
-                    {customCSS}
-                  </pre>
                 </div>
               </div>
+            )}
 
-            </div>
+            {/* 各ラボコンポーネントの呼び出し */}
+            {mode === 'design' && <DesignLab />}
+            {mode === 'visual' && <VisualLab />}
+            {mode === 'code' && <CodeLab />}
+            {mode === 'quiz' && <QuizLab />}
+            {mode === 'mission' && <MissionLab onProjectAdded={addProject} />}
+            {mode === 'work' && <WorkLab onProjectAdded={addProject} />}
+            {mode === 'project' && <ProjectLab projects={projects} />}
+
           </div>
-        )}
-      </main>
+        </main>
+      </div>
+
+      {/* 📋 最下部：ステータスバー */}
+      <footer className="bg-[#007acc] text-white text-[11px] px-4 py-1 flex justify-between items-center font-sans">
+        <div>✓ CodePlayground Workspace Connected (Tauri)</div>
+        <div>TypeScript JSX</div>
+      </footer>
+
     </div>
   );
 }
