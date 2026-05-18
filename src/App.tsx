@@ -6,8 +6,10 @@ import QuizLab from './labs/QuizLab';
 import MissionLab from './labs/MissionLab'; // 👑 修行モード
 import WorkLab from './labs/WorkLab';       // 👑 完全自由制作モード
 import ProjectLab from './labs/ProjectLab';
+import TraceLab from './labs/TraceLab';     // 👑 新章：写経＆マルチページ遷移ラボ
 
-type Mode = 'top' | 'design' | 'visual' | 'code' | 'quiz' | 'mission' | 'work' | 'project';
+// 👑 型定義に 'trace' を安全に追加
+type Mode = 'top' | 'design' | 'visual' | 'code' | 'quiz' | 'mission' | 'work' | 'project' | 'trace';
 
 interface ProjectItem {
   name: string;
@@ -47,10 +49,11 @@ export default function App() {
       {/* 🗂️ メインレイアウト */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* 🎛️ 左端：アクティビティバー（縦アイコン） */}
+        {/* 🎛️ 左端：アクティビティバー（縦アイコン欄に「✍️」を融合！） */}
         <aside className="w-12 bg-[#333333] border-r border-[#2b2b2b] flex flex-col items-center py-4 gap-6 text-xl text-[#858585]">
           <button onClick={() => setMode('top')} className={`hover:text-white transition ${mode === 'top' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📁</button>
           <button onClick={() => setMode('mission')} className={`hover:text-white transition ${mode === 'mission' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📝</button>
+          <button onClick={() => setMode('trace')} className={`hover:text-white transition ${mode === 'trace' ? 'text-amber-500 border-l-2 border-amber-500 w-full' : ''}`}>✍️</button>
           <button onClick={() => setMode('work')} className={`hover:text-white transition ${mode === 'work' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>💼</button>
           <button onClick={() => setMode('visual')} className={`hover:text-white transition ${mode === 'visual' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>👁️</button>
           <button onClick={() => setMode('design')} className={`hover:text-white transition ${mode === 'design' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>🎨</button>
@@ -59,13 +62,14 @@ export default function App() {
           <button onClick={() => setMode('project')} className={`hover:text-white transition ${mode === 'project' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>🚀</button>
         </aside>
 
-        {/* 📂 左サイドバー：ファイルエクスプローラー */}
+        {/* 📂 左サイドバー：ファイルエクスプローラー（新ファイル「TraceLab.tsx」を完璧配置！） */}
         <nav className="w-60 bg-[#252526] border-r border-[#2b2b2b] p-4 hidden md:flex flex-col text-left text-xs text-[#cccccc]">
           <div className="font-bold text-[10px] text-[#858585] uppercase tracking-wider mb-3">エクスプローラー</div>
           <div className="space-y-1">
             <div className="text-[#858585] font-bold">▼ src / labs</div>
             <button onClick={() => setMode('top')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'top' ? 'bg-[#37373d] text-white font-bold' : ''}`}>🏠 Welcome.md</button>
             <button onClick={() => setMode('mission')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'mission' ? 'bg-[#37373d] text-amber-400 font-bold border-l-2 border-amber-500' : ''}`}>📝 MissionLab.json (修行)</button>
+            <button onClick={() => setMode('trace')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'trace' ? 'bg-[#37373d] text-orange-400 font-bold border-l-2 border-orange-500' : ''}`}>✍️ TraceLab.tsx (写経トレース)</button>
             <button onClick={() => setMode('work')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'work' ? 'bg-[#37373d] text-emerald-400 font-bold border-l-2 border-emerald-500' : ''}`}>💼 WorkLab.tsx (自由制作空間)</button>
             <button onClick={() => setMode('visual')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'visual' ? 'bg-[#37373d] text-white' : ''}`}>👁️ VisualLab.tsx</button>
             <button onClick={() => setMode('design')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'design' ? 'bg-[#37373d] text-white' : ''}`}>🎨 DesignLab.tsx</button>
@@ -87,7 +91,7 @@ export default function App() {
 
           <div className="p-8 max-w-5xl w-full mx-auto">
             
-           {/* 🏠 TOP MENU (VS Code風ウェルカム画面：完全版) */}
+            {/* 🏠 TOP MENU (VS Code風ウェルカム画面にTraceLabの特大ボタンを配置！) */}
             {mode === 'top' && (
               <div className="text-left space-y-8">
                 <div>
@@ -103,9 +107,16 @@ export default function App() {
                     <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">▼ Mainクリエイティブ（お仕事・自由制作）</h3>
                     <div className="space-y-2">
                       <button onClick={() => setMode('mission')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
-                        <div className="text-xs font-bold text-amber-400 group-hover:text-amber-300 transition"> Pand 📝 Mission Lab (全20ステージの修行)</div>
+                        <div className="text-xs font-bold text-amber-400 group-hover:text-amber-300 transition">📝 Mission Lab (全20ステージの修行)</div>
                         <div className="text-[11px] text-[#858585] mt-1">解説と答えを確認しながら、お題に沿ってHP制作・WPテーマ開発の基本をマスターする。</div>
                       </button>
+                      
+                      {/* 👑 ここに新規：Trace Labの大ボタンをガチっとドッキング！ */}
+                      <button onClick={() => setMode('trace')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
+                        <div className="text-xs font-bold text-orange-400 group-hover:text-orange-300 transition">✍️ Trace Lab (見本写経 × 複数ページ実戦)</div>
+                        <div className="text-[11px] text-[#858585] mt-1">チラシ1枚サイズの見本を完コピ写経！複数ページをリンクで繋ぐマルチ画面遷移を体験。</div>
+                      </button>
+
                       <button onClick={() => setMode('work')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
                         <div className="text-xs font-bold text-emerald-400 group-hover:text-emerald-300 transition">💼 Work Lab (完全自由な一から制作スペース)</div>
                         <div className="text-[11px] text-[#858585] mt-1">縛りは一切なし。真っ白なエディタから、あなたの好きなサイトやブログを1から自由に創り上げる空間。</div>
@@ -140,11 +151,12 @@ export default function App() {
               </div>
             )}
 
-            {/* 各ラボコンポーネントの呼び出し */}
+            {/* 各ラボコンポーネントの呼び出し（TraceLabを追加！） */}
             {mode === 'design' && <DesignLab />}
             {mode === 'visual' && <VisualLab />}
             {mode === 'code' && <CodeLab />}
             {mode === 'quiz' && <QuizLab />}
+            {mode === 'trace' && <TraceLab />}
             {mode === 'mission' && <MissionLab onProjectAdded={addProject} />}
             {mode === 'work' && <WorkLab onProjectAdded={addProject} />}
             {mode === 'project' && <ProjectLab projects={projects} />}
