@@ -1,4 +1,3 @@
-// 👑 他のファイルは一切見ない！このファイルの中で型定義を100%完結！
 export interface TracePage {
   fileName: string;
   initialCode: string;
@@ -9,7 +8,7 @@ export interface TracePage {
 export interface TraceStage {
   id: number;
   title: string;
-  category: 'HTML' | 'CSS' | 'WordPress'; // 👑 CSSカテゴリを正式に国家承認！！
+  category: 'HTML' | 'CSS' | 'WordPress'; // 👑 CSSカテゴリを正式に承認！
   description: string;
   mission: string;
   pages: TracePage[]; 
@@ -91,7 +90,7 @@ export const TRACE_STAGES: TraceStage[] = [
     category: 'HTML',
     title: "HTML 05：お問い合わせフォーム（input/select）",
     description: "フォームの基本構成要素となる入力エリア、セレクトボックス、送信ボタンのHTML配置です。",
-    mission: "各種フォーム用タグを正確にトレースし、入力フォームの見た目を構築してください。",
+    mission: "各種フォーム用タグを正確にトレースし、入力フォーム的見た目を構築してください。",
     pages: [
       {
         fileName: 'index.html',
@@ -228,7 +227,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 14,
     category: 'CSS',
-    title: "CSS 04：ボックスシャドウ（浮き出る3D効果）",
+    title: "CSS 04：ボックスシャドウ（浮き出る 3D 効果）",
     description: "『box-shadow』のぼかし具合と透明度を緻密に調整し、紙がふわっと浮き上がったような立体感を演出します。",
     mission: "影（シャドウ）の細かな数値を正確にトレースして、極上の立体カードを作ってください。",
     pages: [
@@ -243,7 +242,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 15,
     category: 'CSS',
-    title: "CSS 05：テキストトリミング（3点リーダー...省略記号）",
+    title: "CSS 05：テキストトリミング（3点リーダー省略）",
     description: "枠からはみ出た長文のテキストを自動的に『…』で省略させる、実務必須のCSS魔法です。",
     mission: "ellipsisを含む3つの属性を正しく組み合わせ、テキストを1行で綺麗に省略させてください。",
     pages: [
@@ -258,7 +257,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 16,
     category: 'CSS',
-    title: "CSS 06：親要素に対する完全中央配置（position/translate）",
+    title: "CSS 06：親要素に対する完全中央配置",
     description: "背景画像やおや要素に対して、子要素を完全に画面の「ド真ん中」に固定する位置決めの必勝パターンです。",
     mission: "positionプロパティとトランスフォームのパーセント数値を正確に記述してください。",
     pages: [
@@ -273,7 +272,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 17,
     category: 'CSS',
-    title: "CSS 07：アスペクト比の固定（aspect-ratio黄金分割）",
+    title: "CSS 07：アスペクト比の固定（aspect-ratio）",
     description: "モダンCSSの新常識！画像の横幅が変わっても、常に『16:9』などの黄金比を崩さずキープする指定方法です。",
     mission: "aspect-ratio属性をマスターし、映画のスクリーンのような比率のボックスを作ります。",
     pages: [
@@ -288,7 +287,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 18,
     category: 'CSS',
-    title: "CSS 08：すりガラス透過レイヤー（backdrop-filter）",
+    title: "CSS 08：すりガラス透過レイヤー（Glassmorphism）",
     description: "iOSデザインでおなじみの、背景をすりガラスのように透過＆ぼかす最新のCSSデザインです。",
     mission: "rgbaによる半透明と、blurによるボカシ効果の合わせ技を綺麗にトレースしてください。",
     pages: [
@@ -303,7 +302,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 19,
     category: 'CSS',
-    title: "CSS 09：スタイリッシュな文字間隔（letter-spacingロゴ風）",
+    title: "CSS 09：スタイリッシュな文字間隔",
     description: "ありきたりなh1を一瞬でおしゃれなブランドロゴに変える、文字の間隔（カーニング）とアンダーラインの引き方です。",
     mission: "letter-spacingとborderを組み合わせたエモい見出しを完成させてください。",
     pages: [
@@ -318,7 +317,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 20,
     category: 'CSS',
-    title: "CSS 10：長いURLのはみ出し自動改行（word-break）",
+    title: "CSS 10：長いURLのはみ出し自動改行",
     description: "英数字の連続や長いURLが、親要素の右端を突き破ってバグるのを防ぎ、安全に自動改行させる必須呪文です。",
     mission: "break-allプロパティを指定して、枠内にURLテキストをきれいに閉じ込めましょう。",
     pages: [
@@ -337,7 +336,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 21,
     category: 'WordPress',
-    title: "WP 01：メインループ基本構造（if & whileのPHP構文）",
+    title: "WP 01：メインループ基本構造",
     description: "WordPress開発の全ての根底！投稿データが管理画面にある限り自動でループして出力するお決まりのPHPコードです。",
     mission: "WP開発で1億回書くことになる基本ループの構文を、タイポなしで正確に書き写してください。",
     pages: [
@@ -352,7 +351,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 22,
     category: 'WordPress',
-    title: "WP 02：ヘッダー・フッターの外部テンプレート読み込みパーツ",
+    title: "WP 02：ヘッダー・フッターの外部テンプレート読み込み",
     description: "共通パーツとなるheader.phpやfooter.phpを呼び出して、1つのサイトにガッチャンコする定番関数です。",
     mission: "WordPress固有のインクルード関数を正しく写経し、サイトの骨組みを完成させましょう。",
     pages: [
@@ -367,7 +366,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 23,
     category: 'WordPress',
-    title: "WP 03：記事タイトルと本文の出力自動化テンプレートタグ",
+    title: "WP 03：記事タイトルと本文の出力自動化",
     description: "管理画面の投稿一覧で入力した「タイトル」と「エディタの中身」をフロント側に展開するコア関数です。",
     mission: "the_で始まる2大出力関数をメインループ内に正確に配置して、記事を表示させてください。",
     pages: [
@@ -382,7 +381,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 24,
     category: 'WordPress',
-    title: "WP 04：スタイルシートへの絶対パス動的取得（bloginfo）",
+    title: "WP 04：スタイルシートへの絶対パス動的取得",
     description: "テーマの直下にあるstyle.cssへの絶対パス（URL）を、WordPress側から安全に自動取得してLinkさせる手法です。",
     mission: "テーマフォルダ内のCSSのURLを書き出すPHPの命令タグを正確にマークアップしてください。",
     pages: [
@@ -397,9 +396,9 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 25,
     category: 'WordPress',
-    title: "WP 05：テーマ必須フックの埋め込み（wp_head & wp_footer）",
+    title: "WP 05：テーマ必須フックの埋め込み",
     description: "これが無いとプラグインが100%全滅する！プラグインのシステムコードを安全に流し込むための最重要関門です。",
-    mission: "head閉じタグの直前と、body閉じタグの直前に、お決まりの必須フックを埋め込んでください。",
+    mission: "head閉じタグの直前と、body閉じタグ of 直前に、お決まりの必須フックを埋め込んでください。",
     pages: [
       {
         fileName: 'footer.php',
@@ -412,7 +411,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 26,
     category: 'WordPress',
-    title: "WP 06：投稿の看板アイキャッチ画像の条件分岐と出力",
+    title: "WP 06：看板アイキャッチ画像の条件分岐と出力",
     description: "ブログ記事の「サムネイル画像」が設定されているかをチェックし、あれば自動出力する実戦コードです。",
     mission: "has_post_thumbnailの条件分岐と、出力関数のコンビネーションを正確にトレースしてください。",
     pages: [
@@ -427,7 +426,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 27,
     category: 'WordPress',
-    title: "WP 07：投稿日時のフォーマットカスタムカスタマイズ出力",
+    title: "WP 07：投稿日時のフォーマットカスタム出力",
     description: "「2026/05/18」など、自分の好きな形式で記事の投稿時間を表示させるカスタム出力タグです。",
     mission: "引数の中に年月日を表すフォーマット文字列（'Y/m/d'）を正しく指定して写経してください。",
     pages: [
@@ -442,7 +441,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 28,
     category: 'WordPress',
-    title: "WP 08：条件分岐（フロントページかどうかの判定関数）",
+    title: "WP 08：条件分岐（フロントページかどうかの判定）",
     description: "「トップページだけに特大バナーを表示し、他の下層ページでは非表示にしたい」という時の一大定番条件分岐です。",
     mission: "is_front_page関数を使った、WordPressの条件分岐の閉じ方までを綺麗に模写してください。",
     pages: [
@@ -457,7 +456,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 29,
     category: 'WordPress',
-    title: "WP 09：カスタムサブループクエリ（WP_Query新着一覧）",
+    title: "WP 09：カスタムサブループクエリ",
     description: "メインのページとは別に、「お知らせカテゴリの記事だけを新着3件、サイドバーに無理やり引っ張ってきて表示する」最強の特級呪文です。",
     mission: "引数の配列（args）と、new WP_Queryのセット、そしてループ終了後のリセット（reset_postdata）までを完璧に写経してください。",
     pages: [
@@ -472,7 +471,7 @@ export const TRACE_STAGES: TraceStage[] = [
   {
     id: 30,
     category: 'WordPress',
-    title: "WP 10：オリジナルテーマサポート機能の有効化宣言",
+    title: "WP 10：オリジナルテーマサポート機能の有効化",
     description: "テーマ開発の第1歩！「このオリジナルテーマはアイキャッチ画像機能やタイトルタグを自動生成します！」とWPコアに宣言するコードです。",
     mission: "functions.phpの超定番セットアップ関数を、最後のセミコロンまで完璧にトレースしてください。",
     pages: [

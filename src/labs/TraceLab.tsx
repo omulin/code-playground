@@ -42,8 +42,7 @@ export default function TraceLab() {
     let allMatch = true;
     stage.pages.forEach(p => {
       const userClean = (updated[p.fileName] || "").replace(/\s/g, "");
-      const correctTarget = p.code !== undefined ? p.code : p.correctCode;
-      const correctClean = (correctTarget || "").replace(/\s/g, "");
+      const correctClean = (p.correctCode || "").replace(/\s/g, "");
       if (userClean !== correctClean) {
         allMatch = false;
       }
@@ -62,7 +61,7 @@ export default function TraceLab() {
     const targetPath = browserPath || 'index.html';
     const currentHtmlRaw = userCodes[targetPath] || ``;
     
-    // WordPress用の安全な実装待ち表示（変更なし）
+    // WordPress用の安全な実装待ち表示（確定キープ）
     if (stage.category === 'WordPress' || targetPath.endsWith('.php')) {
       return (
         <div className="w-full h-full min-h-[260px] bg-[#1e1e1e] text-emerald-400 rounded-lg p-4 overflow-auto border border-[#333] flex flex-col justify-center items-center text-xs font-mono select-none">
@@ -129,7 +128,7 @@ export default function TraceLab() {
   };
 
   const activePage = getActivePage();
-  const displayCode = activePage.code !== undefined ? activePage.code : (activePage.correctCode || '');
+  const displayCode = activePage.correctCode || '';
 
   // 👑 見本コード側の改行数を数えて、見本用の行番号配列を錬成
   const correctLineCount = Math.max(displayCode.split('\n').length, 1);
@@ -169,7 +168,7 @@ export default function TraceLab() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         
-        {/* 👑 【大改造】左側：[見本] パネル（行番号レーンを新設！） */}
+        {/* 左側：[見本] パネル（行番号完全分割表示！） */}
         <div className="bg-[#1e1e1e] border border-[#3c3c3c] rounded p-4 flex flex-col min-h-[360px]">
           <div className="flex justify-between items-center mb-2">
             <h4 className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">👀 [見本] 正解コードパネル</h4>
