@@ -1,83 +1,99 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 type LangType = 'js' | 'python' | 'php';
 
 interface BugStage {
   id: number;
+  category: LangType;
   title: string;
   mission: string;
-  hint: string;
   initialCode: string;
-  correctExpected: string;
   runner: (code: string) => { success: boolean; log: string };
 }
 
-const STAGES: Record<LangType, BugStage[]> = {
-  js: [
-    { id: 1, title: "閉じカッコの迷子 (SyntaxError)", mission: "console.log の閉じカッコ ) やクォーテーションが壊れています。", hint: "文字列の始まりと終わりの種類を揃え、関数のカッコをきっちり閉じましょう。", initialCode: "console.log('Welcome to Playground;", correctExpected: "Welcome", runner: (c) => c.replace(/\s/g, "").includes("console.log('Welcome to PlayGround')") || c.replace(/\s/g, "").includes('console.log("Welcome to PlayGround")') ? { success: true, log: "▶ Welcome to PlayGround\n\n✨ SUCCESS!" } : { success: false, log: "🚨 SyntaxError: Missing ')' after argument list" } },
-    { id: 2, title: "スコープの壁 (ReferenceError)", mission: "関数の中の変数 userName を外から強引に呼び出そうとしています。", hint: "変数を関数の外（グローバル空間）に出すか、関数を正しく実行しましょう。", initialCode: "function getUser() {\n  let userName = 'YUTO_CODE';\n}\nconsole.log(userName);", correctExpected: "", runner: (c) => !c.includes("function") && c.includes("userName") ? { success: true, log: "▶ YUTO_CODE\n\n✨ SUCCESS!" } : { success: false, log: "🚨 ReferenceError: userName is not defined" } },
-    { id: 3, title: "存在しない配列要素 (Undefined)", mission: "3つの要素しかない配列から「ぶどう」を出したいのに虚無が出ます。", hint: "配列は1ではなく「0」から数えます。3番目の要素の添え字は何番？", initialCode: "const fruits = ['りんご', 'バナナ', 'ぶどう'];\nconsole.log(fruits);", correctExpected: "", runner: (c) => c.replace(/\s/g, "").includes("fruits") ? { success: true, log: "▶ ぶどう\n\n✨ SUCCESS!" } : { success: false, log: "▶ undefined\n\n⚠ ERROR: 配列の範囲外です" } },
-    { id: 4, title: "定数への禁断の再代入 (TypeError)", mission: "const で作った定数の値を途中で書き換えようとして怒られています。", hint: "後から値を書き換える可能性のある変数は const ではなく let を使います。", initialCode: "const score = 100;\nscore = 120;\nconsole.log(score);", correctExpected: "", runner: (c) => c.includes("let score") ? { success: true, log: "▶ 120\n\n✨ SUCCESS!" } : { success: false, log: "🚨 TypeError: Assignment to constant variable." } },
-    { id: 5, title: "文字と数値のガッチャンコ (Type Bug)", mission: "数値の 10 と 20 を足して 30 にしたいのに、なぜか「1020」になります。", hint: "片方が文字の '10' になっています。クォーテーションを外して純粋な数値にしましょう。", initialCode: "let a = '10';\nlet b = 20;\nconsole.log(a + b);", correctExpected: "", runner: (c) => !c.includes("'10'") && !c.includes('"10"') ? { success: true, log: "▶ 30\n\n✨ SUCCESS!" } : { success: false, log: "▶ 1020\n\n⚠ ERROR: 文字列結合になってしまっています" } },
-    { id: 6, title: "非同期処理のすれ違い (Promise Bug)", mission: "データを待つ前にコンソールが走って [object Promise] が出ちゃいます。", hint: "非同期関数の前に await を付け、親関数に async を付与しましょう。", initialCode: "function fetchData() { return 'Data'; }\nconst res = fetchData();\nconsole.log(res);", correctExpected: "", runner: (c) => c.includes("await") ? { success: true, log: "▶ Data\n\n✨ SUCCESS!" } : { success: false, log: "▶ [object Promise]\n\n⚠ ERROR: データ同期が間に合っていません" } },
-    { id: 7, title: "タイポの悲劇 (Property Error)", mission: "オブジェクト内の length を Lenth と打ち間違えてバグっています。", hint: "JavaScriptは1文字の大文字小文字、スペルミスも見逃してくれません。", initialCode: "const str = 'Hello';\nconsole.log(str.Lenth);", correctExpected: "", runner: (c) => c.includes(".length") ? { success: true, log: "▶ 5\n\n✨ SUCCESS!" } : { success: false, log: "▶ undefined" } },
-    { id: 8, title: "魔の無限ループ (Call Stack Overflow)", mission: "終わりがないループに入り、ブラウザの心臓が止まりかけています！", hint: "whileの条件を途中で false にするか、カウンターを増やす処理（i++）が必要です。", initialCode: "let i = 0;\nwhile(i < 3) {\n  console.log('Loop');\n}", correctExpected: "", runner: (c) => c.includes("i++") || c.includes("i += 1") ? { success: true, log: "▶ Loop\n▶ Loop\n▶ Loop\n\n✨ SUCCESS: 脱出成功！" } : { success: false, log: "🚨 RangeError: Maximum call stack size exceeded (無限無限ループ)" } },
-    { id: 9, title: "JSONパースの破綻 (JSON Error)", mission: "JSONの文字をパースしようとしていますが形式が不正でクラッシュします。", hint: "JSONのキーと値は必ずダブルクォーテーション「\"」で囲むルールです。", initialCode: "const data = JSON.parse('{ name: 'Yuto' }');", correctExpected: "", runner: (c) => c.includes('\\"name\\"') || c.includes('"{ \\"name\\": \\"Yuto\\" }"') || c.includes('"{""name"":""Yuto""}"') ? { success: true, log: "▶ { name: 'Yuto' }\n\n✨ SUCCESS!" } : { success: false, log: "🚨 SyntaxError: Unexpected token n in JSON at position 2" } },
-    { id: 10, title: "【JS最終試練】DOMの幻影 (Null Error)", mission: "存在しない id='btn' を操作しようとして Null エラーが出ています。", hint: "HTMLに <button id='btn'> を作るか、取得するID名を実在するものに直して！", initialCode: "const target = document.getElementById('btmn');\ntarget.addEventListener('click', () => {});", correctExpected: "", runner: (c) => c.includes("'btn'") ? { success: true, log: "⚡ EventListener attached to #btn successfully!\n\n🏆 JAVASCRIPT MASTER CLEAR!" } : { success: false, log: "🚨 TypeError: Cannot read properties of null (reading 'addEventListener')" } }
-  ],
-  python: [
-    { id: 1, title: "恐怖のインデント (IndentationError)", mission: "Pythonの命である、if文の下の「スペース4つ（字下げ）」がありません。", hint: "print の手前に半角スペースを4つ入れて、ブロックを明示しましょう。", initialCode: "if True:\nprint('Hello Python')", correctExpected: "", runner: (c) => c.includes("    print") || c.includes("\tprint") ? { success: true, log: "▶ Hello Python\n\n✨ SUCCESS!" } : { success: false, log: "🚨 IndentationError: expected an indented block after 'if' statement" } },
-    { id: 2, title: "コロンの忘れ物 (SyntaxError)", mission: "for文やif文の行の末尾に必要な「あの記号」がありません。", hint: "Pythonの構文の区切りには、行末にコロン「:」が絶対に必要です。", initialCode: "for i in range(3)\n    print(i)", correctExpected: "", runner: (c) => c.includes("range(3):") ? { success: true, log: "▶ 0\n▶ 1\n▶ 2\n\n✨ SUCCESS!" } : { success: false, log: "🚨 SyntaxError: expected ':'" } },
-    { id: 3, title: "文字と数字は足せない (TypeError)", mission: "文字列の「年齢: 」に数値の「20」をそのまま足そうとして怒られています。", hint: "数値を str(20) で囲って、文字列の型に変換してから結合しましょう。", initialCode: "age = 20\nprint('年齢: ' + age)", correctExpected: "", runner: (c) => c.includes("str(age)") || c.includes("str(20)") ? { success: true, log: "▶ 年齢: 20\n\n✨ SUCCESS!" } : { success: false, log: "🚨 TypeError: can only concatenate str (not 'int') to str" } },
-    { id: 4, title: "辞書のキー迷子 (KeyError)", mission: "辞書（連想配列）の中にないキー「age」を呼び出そうとしています。", hint: "辞書の中に 'age': 20 を追加するか、実在する 'name' を呼び出して。", initialCode: "user = { 'name': 'Yuto' }\nprint(user['age'])", correctExpected: "", runner: (c) => c.includes("'age'") && c.includes("20") ? { success: true, log: "▶ 20\n\n✨ SUCCESS!" } : { success: false, log: "🚨 KeyError: 'age'" } },
-    { id: 5, title: "インポートエラー (ModuleNotFoundError)", mission: "謎の「randommm」という存在しないモジュールを呼んでいます。", hint: "正しいモジュール名は「random」です。タイポを修正してください。", initialCode: "import randommm\nprint(randommm.randint(1, 10))", correctExpected: "", runner: (c) => c.includes("import random") && !c.includes("randommm") ? { success: true, log: "▶ 7 (ランダム数値)\n\n✨ SUCCESS!" } : { success: false, log: "🚨 ModuleNotFoundError: No module named 'randommm'" } },
-    { id: 6, title: "タプルの書き換え禁止 (TypeError)", mission: "中身を変更できない「タプル( )」の値を書き換えようとしています。", hint: "値を変更したい場合はカッコを「[ ]」にして配列（リスト）に直します。", initialCode: "data = (1, 2, 3)\ndata = 99", correctExpected: "", runner: (c) => c.includes("") ? { success: true, log: "▶\n\n✨ SUCCESS!" } : { success: false, log: "🚨 TypeError: 'tuple' object does not support item assignment" } },
-    { id: 7, title: "存在しないローカル変数 (UnboundLocalError)", mission: "関数の外の変数を、関数の中で宣言なしに書き換えようとしています。", hint: "関数内の先頭で「global count」と宣言して外の変数と同期させましょう。", initialCode: "count = 0\ndef add():\n    count += 1\nadd()", correctExpected: "", runner: (c) => c.includes("global count") ? { success: true, log: "⚡ グローバル変数のカウントに成功！\n\n✨ SUCCESS!" } : { success: false, log: "🚨 UnboundLocalError: local variable 'count' referenced before assignment" } },
-    { id: 8, title: "ゼロ除算のタブー (ZeroDivisionError)", mission: "数学の世界の絶対タブー、数値を「0」で割る計算が走っています。", hint: "割る数を 0 以外（例: 2）に修正して、エラーを回避しましょう。", initialCode: "print(10 / 0)", correctExpected: "", runner: (c) => !c.includes("/ 0") && c.includes("/") ? { success: true, log: "▶ 5.0\n\n✨ SUCCESS!" } : { success: false, log: "🚨 ZeroDivisionError: division by zero" } },
-    { id: 9, title: "リストの限界突破 (IndexError)", mission: "要素が2つしかないリストから、3番目（）を呼び出しています。", hint: "インデックスは0から始まるので、2つ目の要素はで呼び出せます。", initialCode: "items = ['PC', 'スマホ']\nprint(items)", correctExpected: "", runner: (c) => c.includes("items") ? { success: true, log: "▶ スマホ\n\n✨ SUCCESS!" } : { success: false, log: "🚨 IndexError: list index out of range" } },
-    { id: 10, title: "【Python最終試練】型の落とし穴 (ValueError)", mission: "文字の「abc」を、強引に整数型 int() に変換しようとしています。", hint: "int()の中身を、数字に変形できる文字（例: '123'）に修正して！", initialCode: "num = int('abc')\nprint(num)", correctExpected: "", runner: (c) => c.includes("int('") && !c.includes("abc") ? { success: true, log: "▶ 123\n\n🏆 PYTHON MASTER CLEAR!" } : { success: false, log: "🚨 ValueError: invalid literal for int() with base 10: 'abc'" } }
-  ],
-  php: [
-    { id: 1, title: "ドル記号の忘れ物 (Parse Error)", mission: "PHPの変数宣言に絶対に必要な「あのマーク」がありません。", hint: "PHPの変数は、アルファベットの前に必ず「$」を付けるルールです。", initialCode: "name = 'PHP_LAB';\necho $name;", correctExpected: "", runner: (c) => c.includes("$name =") ? { success: true, log: "▶ PHP_LAB\n\n✨ SUCCESS!" } : { success: false, log: "🚨 Parse error: syntax error, unexpected '='" } },
-    { id: 2, title: "セミコロンの消滅 (Parse Error)", mission: "命令の終わりのセミコロン「;」がなく、PHPの処理が詰まっています。", hint: "PHPはJavaScriptと違って行末の「;」省略が絶対に許されません。", initialCode: "echo 'Hello' \necho 'World';", correctExpected: "", runner: (c) => c.includes("'Hello';") ? { success: true, log: "▶ HelloWorld\n\n✨ SUCCESS!" } : { success: false, log: "🚨 Parse error: syntax error, unexpected token 'echo'" } },
-    { id: 3, title: "文字結合のドット違い (SyntaxError)", mission: "文字同士をくっつけるのに、JSのクセで「+」を使ってバグっています。", hint: "PHPで文字をガッチャンコする（結合する）記号は「 . (ドット)」です。", initialCode: "echo '✨ ' + 'Welcome';", correctExpected: "", runner: (c) => c.includes("'✨ ' .") ? { success: true, log: "▶ ✨ Welcome\n\n✨ SUCCESS!" } : { success: false, log: "🚨 Fatal error: Uncaught TypeError: Unsupported operand types" } },
-    { id: 4, title: "配列の矢印の向き (Parse Error)", mission: "連想配列のキーと値を繋ぐ矢印がハイフンになっていて壊れています。", hint: "PHPの連想配列の矢印は「 => 」です。不等号の向きに注意して！", initialCode: "$user = [ 'id' -> 1 ];", correctExpected: "", runner: (c) => c.includes("=>") ? { success: true, log: "⚡ Array allocation success!\n\n✨ SUCCESS!" } : { success: false, log: "🚨 Parse error: syntax error, unexpected '?'" } },
-    { id: 5, title: "関数の外の変数へのアクセス (Warning)", mission: "関数の外にある $globalData を、関数の中で認識できず虚無になります。", hint: "関数内の1行目で「global $globalData;」と宣言して外と接続して。", initialCode: "$globalData = 'INFO';\nfunction show() {\n    echo $globalData;\n}\nshow();", correctExpected: "", runner: (c) => c.includes("global $globalData") ? { success: true, log: "▶ INFO\n\n✨ SUCCESS!" } : { success: false, log: "⚠ Warning: Undefined variable $globalData" } },
-    { id: 6, title: "アロー演算子の間違い (Fatal error)", mission: "クラスのメソッドを呼ぶのに、Java風の「.」を使って大爆発しています。", hint: "PHPでインスタンスのメソッドを呼び出す記号は「 -> 」です。", initialCode: "$app = new MyApp();\n$app.run();", correctExpected: "", runner: (c) => c.includes("->run()") ? { success: true, log: "▶ App is running...\n\n✨ SUCCESS!" } : { success: false, log: "🚨 Fatal error: Call to undefined function run()" } },
-    { id: 7, title: "定数 define の罠 (Notice)", mission: "define で作った定数を、変数のクセで「$」を付けて呼んでしまいました。", hint: "define()で作った定数を呼び出すときは、頭の「$」は不要です。", initialCode: "define('VERSION', '1.0');\necho $VERSION;", correctExpected: "", runner: (c) => c.includes("echo VERSION") ? { success: true, log: "▶ 1.0\n\n✨ SUCCESS!" } : { success: false, log: "⚠ Warning: Undefined variable $VERSION" } },
-    { id: 8, title: "文字列の中のシングルクォート崩壊", mission: "文章の中の「I'm」のせいで文字列の囲いが途中でぶった切れています。", hint: "「I\\'m」のようにバックスラッシュ（￥）を入れてエスケープして！", initialCode: "$txt = 'I'm a PHP Developer';\necho $txt;", correctExpected: "", runner: (c) => c.includes("I\\'m") || c.includes('"I\'m') ? { success: true, log: "▶ I'm a PHP Developer\n\n✨ SUCCESS!" } : { success: false, log: "🚨 Parse error: syntax error, unexpected identifier 'm'" } },
-    { id: 9, title: "未定義の配列キー (Warning)", mission: "連想配列に存在しないキー「status」を echo しようとしています。", hint: "キーを実在する「title」に変えるか、キー自体を事前に定義しましょう。", initialCode: "$book = [ 'title' => 'WebBook' ];\necho $book['status'];", correctExpected: "", runner: (c) => c.includes("['title']") ? { success: true, log: "▶ WebBook\n\n✨ SUCCESS!" } : { success: false, log: "⚠ Warning: Undefined array key \"status\"" } },
-    { id: 10, title: "【PHP最終試練】インクルードの消失 (Fatal error)", mission: "存在しない「header-file.php」を強引に require しようとしています。", hint: "読み込むファイル名を、実在する「header.php」に修正して！", initialCode: "require 'header-file.php';\necho 'PAGE_LOADED';", correctExpected: "", runner: (c) => c.includes("'header.php'") ? { success: true, log: "▶ [HEADER_LOADED] PAGE_LOADED\n\n🏆 PHP MASTER CLEAR!" } : { success: false, log: "🚨 Fatal error: Failed opening required 'header-file.php'" } }
-  ]
-};
+// 👑 全30問（JS10問, Python10問, PHP10問）のガチアルゴリズム！
+const CODE_STAGES: BugStage[] = [
+  // --- JAVASCRIPT (1-10) ---
+  { id: 1, category: 'js', title: "reduceの初期値の罠", mission: "オブジェクト配列から金額の合計を出したいですがエラーになります。reduceの第2引数（初期値）を設定して直してください。", initialCode: "function calcTotal(cart) {\n  return cart.reduce((acc, item) => {\n    return acc + item.price;\n  });\n}", runner: (c) => c.includes(", 0)") || c.includes(",0)") ? { success: true, log: "▶ 300\n\n✨ SUCCESS: 初期値0が設定されました！" } : { success: false, log: "🚨 TypeError: [object Object]100200" } },
+  { id: 2, category: 'js', title: "クロージャーとvarの呪い", mission: "0, 1, 2を出力したいのに、すべて3になります。ループ内の変数宣言をES6の安全なものに変更してください。", initialCode: "function createCounters() {\n  const fns = [];\n  for (var i = 0; i < 3; i++) {\n    fns.push(() => i);\n  }\n  return fns;\n}", runner: (c) => c.includes("let i") ? { success: true, log: "▶ 0\n▶ 1\n▶ 2\n\n✨ SUCCESS: ブロックスコープが正常に働きました！" } : { success: false, log: "▶ 3\n▶ 3\n▶ 3\n\n🚨 Error: 変数が上書きされています" } },
+  { id: 3, category: 'js', title: "参照渡しのディープコピー", mission: "ネストされたオブジェクトをコピーしたいのですが、元の値まで変わってしまいます。JSONを使ったディープコピーを実装してください。", initialCode: "function updateConfig(config) {\n  const newConf = config; // ここが原因\n  newConf.settings.theme = 'dark';\n  return newConf;\n}", runner: (c) => c.includes("JSON.parse(JSON.stringify") || c.includes("structuredClone") ? { success: true, log: "▶ 元: light, コピー: dark\n\n✨ SUCCESS: 完全な別オブジェクトになりました！" } : { success: false, log: "🚨 Error: 元のオブジェクトまで dark に汚染されました！" } },
+  { id: 4, category: 'js', title: "Setを使った配列の重複排除", mission: "配列の重複を排除する関数を作ってください。（ヒント: new Set() を使い、スプレッド構文で配列に戻します）", initialCode: "function removeDuplicates(arr) {\n  // 重複を削除して返して\n  return arr;\n}", runner: (c) => c.includes("new Set") && c.includes("...") || c.includes("Array.from(new Set") ? { success: true, log: "▶\n\n✨ SUCCESS: 重複が綺麗に消えました！" } : { success: false, log: "▶\n\n🚨 Error: 重複が残っています" } },
+  { id: 5, category: 'js', title: "非同期処理の直列化 (Promise)", mission: "複数の非同期処理が同時に走ってしまいます。for...of と await を使って、順番に（直列に）実行されるように修正してください。", initialCode: "async function processAll(items) {\n  items.forEach(async (item) => {\n    await fetch(item);\n  });\n}", runner: (c) => c.includes("for (") && c.includes("await") && !c.includes("forEach") ? { success: true, log: "▶ Item 1 done\n▶ Item 2 done\n\n✨ SUCCESS: 直列処理になりました！" } : { success: false, log: "🚨 Error: 並列で一気に実行されてサーバーがパンクしました！" } },
+  { id: 6, category: 'js', title: "thisを見失うコールバック", mission: "クラス内の setTimeout で this が未定義になります。アロー関数を使って this のスコープを固定してください。", initialCode: "class Timer {\n  constructor() { this.count = 0; }\n  start() {\n    setTimeout(function() {\n      this.count++;\n    }, 1000);\n  }\n}", runner: (c) => c.includes("() =>") || c.includes(".bind(this)") ? { success: true, log: "▶ count: 1\n\n✨ SUCCESS: thisが正しくバインドされています！" } : { success: false, log: "🚨 TypeError: Cannot read properties of undefined" } },
+  { id: 7, category: 'js', title: "アナグラム判定", mission: "2つの文字列がアナグラムか判定する処理を1行で書いてください。（split, sort, joinを使います）", initialCode: "function isAnagram(str1, str2) {\n  return false;\n}", runner: (c) => c.includes("split") && c.includes("sort") && c.includes("join") ? { success: true, log: "▶ true\n\n✨ SUCCESS: アナグラム判定ロジック完成！" } : { success: false, log: "🚨 Error: 判定ロジックが未実装です" } },
+  { id: 8, category: 'js', title: "分割代入とデフォルト値", mission: "オブジェクトから値を取り出す際、キーが存在しない場合にデフォルト値 'guest' を設定する分割代入を書いてください。", initialCode: "function greet(user) {\n  const { name } = user;\n  console.log(name);\n}", runner: (c) => c.includes("name = 'guest'") || c.includes('name = "guest"') ? { success: true, log: "▶ guest\n\n✨ SUCCESS: デフォルト値が効いています！" } : { success: false, log: "▶ undefined\n\n🚨 Error: 名前が取得できません" } },
+  { id: 9, category: 'js', title: "配列の平坦化 (再帰)", mission: "多次元配列 [1, [2,]] を に平坦化してください。組み込みの flat(Infinity) を使えば一撃です。", initialCode: "function flatten(arr) {\n  return arr;\n}", runner: (c) => c.includes("flat(Infinity)") ? { success: true, log: "▶\n\n✨ SUCCESS: 平坦化完了！" } : { success: false, log: "🚨 Error: 配列がネストされたままです" } },
+  { id: 10, category: 'js', title: "キャッシュの実装 (メモ化)", mission: "関数の計算結果を保存し、同じ引数が来たらキャッシュを返すクロージャー関数 `memoize` を完成させてください。", initialCode: "function memoize(fn) {\n  const cache = {};\n  return function(...args) {\n    // キーを生成してキャッシュ判定を行う\n    \n  };\n}", runner: (c) => c.includes("cache[") && c.includes("return") ? { success: true, log: "▶ キャッシュから瞬時に返却\n\n🏆 JAVASCRIPT MASTER CLEAR!" } : { success: false, log: "🚨 Error: 毎回重い計算が走っています" } },
+
+  // --- PYTHON (11-20) ---
+  { id: 11, category: 'python', title: "デフォルト引数のミュータブル問題", mission: "引数の l=[] が一度しか初期化されず使い回されます。デフォルト値を None にし、内部で初期化してください。", initialCode: "def add_item(item, l=[]):\n    l.append(item)\n    return l", runner: (c) => c.includes("l=None") || c.includes("l = None") ? { success: true, log: "▶\n▶\n\n✨ SUCCESS: 独立したリストが作られました！" } : { success: false, log: "▶\n\n🚨 Warning: リストの中身が引き継がれています！" } },
+  { id: 12, category: 'python', title: "ループ内のlambda遅延評価", mission: "関数のリストがすべて最後の値(2)を返します。lambdaの引数にデフォルト値 `x=i` を渡して値を束縛してください。", initialCode: "funcs = [lambda: i for i in range(3)]\nfor f in funcs: print(f())", runner: (c) => c.includes("x=i") || c.includes("i=i") ? { success: true, log: "▶ 0\n▶ 1\n▶ 2\n\n✨ SUCCESS: クロージャーが正しく束縛されました！" } : { success: false, log: "▶ 2\n▶ 2\n▶ 2\n\n🚨 Error: 変数が遅延評価されています" } },
+  { id: 13, category: 'python', title: "ループ中のリスト変更バグ", mission: "イテレート中のリストから要素を削除すると順番が狂います。リストのコピー `lst[:]` などを回すように修正してください。", initialCode: "lst =\nfor item in lst:\n    if item % 2 == 0:\n        lst.remove(item)", runner: (c) => c.includes("lst[:]") || c.includes(".copy()") ? { success: true, log: "▶\n\n✨ SUCCESS: 安全に要素が削除されました！" } : { success: false, log: "🚨 Warning: ループ中にインデックスが狂いました" } },
+  { id: 14, category: 'python', title: "ローカル変数の束縛", mission: "関数内で外の変数を書き換えようとしてエラーになります。関数の先頭で `global count` を宣言してください。", initialCode: "count = 0\ndef increment():\n    count += 1\n    return count", runner: (c) => c.includes("global count") ? { success: true, log: "▶ 1\n\n✨ SUCCESS: グローバル変数を書き換えました！" } : { success: false, log: "🚨 UnboundLocalError: local variable referenced" } },
+  { id: 15, category: 'python', title: "ディープコピーの欠落", mission: "ネストされたリストを .copy() でコピーしても中身は連動してしまいます。copyモジュールの deepcopy を使ってください。", initialCode: "import copy\norig = [,]\nnew_list = orig.copy()", runner: (c) => c.includes("deepcopy(orig)") ? { success: true, log: "▶ 元: []\n▶ 新: []\n\n✨ SUCCESS: 完全なコピーが生成されました！" } : { success: false, log: "🚨 Error: シャローコピーのため中身が連動しました" } },
+  { id: 16, category: 'python', title: "デコレータのメタデータ消失", mission: "デコレータを使うと元の関数名（__name__）が消えます。functools.wraps を使って情報を引き継いでください。", initialCode: "def my_decorator(func):\n    def wrapper(*args, **kwargs):\n        return func(*args, **kwargs)\n    return wrapper", runner: (c) => c.includes("@wraps") || c.includes("functools.wraps") ? { success: true, log: "▶ __name__: my_function\n\n✨ SUCCESS: メタデータが保持されました！" } : { success: false, log: "🚨 Error: __name__ が 'wrapper' になっています" } },
+  { id: 17, category: 'python', title: "辞書の安全な取得 (.get)", mission: "キーが存在しない時に KeyError で落ちないよう、user.get('age', '未設定') を使ってください。", initialCode: "user = {'name': 'Taro'}\nprint(user['age'])", runner: (c) => c.includes(".get(") ? { success: true, log: "▶ 未設定\n\n✨ SUCCESS: 安全に辞書から値を取得しました！" } : { success: false, log: "🚨 KeyError: 'age'" } },
+  { id: 18, category: 'python', title: "MROとsuper()の多重継承", mission: "子クラスから親クラスの __init__ を呼ぶ際、直接クラス名を書かず、super().__init__() を使ってください。", initialCode: "class Child(Parent):\n    def __init__(self):\n        Parent.__init__(self)", runner: (c) => c.includes("super().__init__") ? { success: true, log: "▶ Parent Initialized\n\n✨ SUCCESS: MROに従った安全な呼び出しです！" } : { success: false, log: "🚨 Warning: 多重継承時に初期化が重複する危険な書き方です" } },
+  { id: 19, category: 'python', title: "例外の広すぎるキャッチ", mission: "except: と書くとシステム終了の例外まで潰してしまいます。except Exception: または except ValueError: と明示してください。", initialCode: "try:\n    int('abc')\nexcept:\n    print('Error')", runner: (c) => c.includes("except Exception") || c.includes("except ValueError") ? { success: true, log: "▶ Error handled\n\n✨ SUCCESS: 安全な例外処理になりました！" } : { success: false, log: "🚨 Warning: KeyboardInterruptまでキャッチする危険な書き方" } },
+  { id: 20, category: 'python', title: "リスト内包表記の最適化", mission: "空のリストを作ってforでappendする処理を、美しい「リスト内包表記 [x for x in ...]」に1行で書き直してください。", initialCode: "evens = []\nfor i in range(10):\n    if i % 2 == 0:\n        evens.append(i)", runner: (c) => c.includes("[") && c.includes("for") && c.includes("if") && !c.includes("append") ? { success: true, log: "▶\n\n🏆 PYTHON MASTER CLEAR!" } : { success: false, log: "🚨 Error: リスト内包表記が使えます！" } },
+
+  // --- PHP / WORDPRESS (21-30) ---
+  { id: 21, category: 'php', title: "foreachの参照渡しバグ", mission: "foreach ($arr as &$val) の後、unset($val) を忘れると要素が上書きされます。unsetを追加して！", initialCode: "$nums =;\nforeach ($nums as &$n) { $n *= 2; }\n// ここで参照を切る必要がある\nforeach ($nums as $n) { echo $n; }", runner: (c) => c.includes("unset($n)") ? { success: true, log: "▶ 246\n\n✨ SUCCESS: 参照が安全に切断されました！" } : { success: false, log: "▶ 244\n\n🚨 Fatal: 最後の要素が汚染されました！" } },
+  { id: 22, category: 'php', title: "WP: サブループのデータ破壊", mission: "WP_Query でサブループを回した後、メインループの投稿データが破壊されています。wp_reset_postdata(); を最後に呼んでください。", initialCode: "$query = new WP_Query($args);\nwhile ($query->have_posts()) {\n    $query->the_post();\n}", runner: (c) => c.includes("wp_reset_postdata") ? { success: true, log: "▶ Global $post restored\n\n✨ SUCCESS: メインループが正常に復活しました！" } : { success: false, log: "🚨 Error: メインループの投稿データが上書きされたままです！" } },
+  { id: 23, category: 'php', title: "遅延静的束縛", mission: "親クラスで self:: を使うと、継承先で上書きした定数が反映されません。self:: ではなく static:: に変更してください。", initialCode: "class ParentClass {\n    public static function get() {\n        return self::$name;\n    }\n}", runner: (c) => c.includes("static::") ? { success: true, log: "▶ Child Name\n\n✨ SUCCESS: 呼び出し元のクラスの定数が取得できました！" } : { success: false, log: "🚨 Error: 常に親クラスの定数が返ってしまいます！" } },
+  { id: 24, category: 'php', title: "SQLインジェクションの脆弱性", mission: "DB操作で変数を直接SQLに埋め込んでいて超危険です。$wpdb->prepare() を使って安全にプレースホルダー化してください。", initialCode: "$wpdb->get_results(\"SELECT * FROM wp_users WHERE id = $user_id\");", runner: (c) => c.includes("prepare(") && c.includes("%d") ? { success: true, log: "▶ Query Safe\n\n✨ SUCCESS: SQLインジェクションを完全に防ぎました！" } : { success: false, log: "🚨 CRITICAL: SQLインジェクションの脆弱性があります！" } },
+  { id: 25, category: 'php', title: "empty()の過剰な判定", mission: "文字列の '0' を empty() で判定すると true になりデータが消えます。 !== '' などの厳密な判定に直してください。", initialCode: "if (empty($value)) {\n    echo '未入力';\n}", runner: (c) => c.includes("!== ''") || c.includes("strlen") ? { success: true, log: "▶ 値: 0\n\n✨ SUCCESS: 0という値が正しく認識されました！" } : { success: false, log: "🚨 Error: 文字列の '0' まで未入力扱いされてしまいます！" } },
+  { id: 26, category: 'php', title: "WP無限ループ (save_post)", mission: "save_post フックの中で wp_update_post() を呼ぶと無限ループします。更新直前に remove_action() でフックを外してください。", initialCode: "add_action('save_post', 'my_save');\nfunction my_save($post_id) {\n    wp_update_post(['ID' => $post_id, 'post_title' => 'New']);\n}", runner: (c) => c.includes("remove_action") ? { success: true, log: "▶ Post Updated\n\n✨ SUCCESS: 無限ループを回避しました！" } : { success: false, log: "🚨 500 Internal Server Error: 無限ループでメモリが枯渇しました！" } },
+  { id: 27, category: 'php', title: "クロージャーの外の変数変更", mission: "クロージャー内で外の変数を書き換えるには、use ($var) ではなく、参照渡し use (&$var) にする必要があります。", initialCode: "$count = 0;\n$func = function() use ($count) {\n    $count++;\n};", runner: (c) => c.includes("use (&$") || c.includes("use(&$") ? { success: true, log: "▶ count: 1\n\n✨ SUCCESS: クロージャー内から外の変数を変更できました！" } : { success: false, log: "🚨 Error: 値渡しのため、外の変数は0のままです！" } },
+  { id: 28, category: 'php', title: "配列マージの落とし穴", mission: "連想配列の結合に + を使うと上書きされません。array_merge() 関数を使って後勝ちで上書きさせてください。", initialCode: "$base = ['a' => 1];\n$custom = ['a' => 2];\n$res = $base + $custom;", runner: (c) => c.includes("array_merge") ? { success: true, log: "▶ ['a' => 2]\n\n✨ SUCCESS: 配列が正しく上書き結合されました！" } : { success: false, log: "🚨 Error: 前勝ちになり、カスタム値が無視されています！" } },
+  { id: 29, category: 'php', title: "Null合体演算子 (??)", mission: "isset() ? $a : 'b' という冗長な三項演算子を、PHP7以降の「Null合体演算子 (??)」を使って短く書いてください。", initialCode: "$name = isset($_GET['n']) ? $_GET['n'] : 'guest';", runner: (c) => c.includes("??") ? { success: true, log: "▶ guest\n\n✨ SUCCESS: スマートなモダンPHP記法になりました！" } : { success: false, log: "🚨 Error: もっと短く書けるモダンな演算子があります！" } },
+  { id: 30, category: 'php', title: "厳密な型チェックと暗黙の変換", mission: "if ($a == 0) だと $a が 'abc' の時にも true になるバグが起きます。=== を使って厳密に比較してください。", initialCode: "if ($val == 0) {\n    echo 'Zero';\n}", runner: (c) => c.includes("===") ? { success: true, log: "▶ 型も値も一致しません\n\n🏆 PHP/WP MASTER CLEAR!" } : { success: false, log: "🚨 Warning: 'abc' == 0 が true になる危険な比較です！" } }
+];
 
 export default function CodeLab() {
-  const [lang, setLang] = useState<LangType>('js');
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   
   const [code, setCode] = useState<string>("");
-  const [terminalLog, setTerminalLog] = useState<string>("⏳ コードを修正して、下の「デバッグ実行」ボタンを押してください...");
+  const [terminalLog, setTerminalLog] = useState<string>("⏳ コードを修正して、下の「▶ RUN CODE」ボタンを押してください...");
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
-  const [showAnswer, setShowAnswer] = useState<boolean>(false);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
 
-  const stage = STAGES[lang][currentIdx] || STAGES[lang];
+  const stage = CODE_STAGES[currentIdx];
+  const lang = stage.category; 
 
   useEffect(() => {
-    if (stage) {
-      setCode(stage.initialCode);
-      setTerminalLog("⏳ コードを修正して、下の「デバッグ実行」ボタンを押してください...");
-      setIsSuccess(false);
-      setShowAnswer(false);
-    }
-  }, [lang, currentIdx, stage]);
+    setCode(stage.initialCode);
+    setTerminalLog(`⏳ サーバー準備完了 (${lang.toUpperCase()} 環境)。コードを記述してください。`);
+    setIsSuccess(false);
+  }, [currentIdx, stage.initialCode, lang]);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
 
   const handleRunDebug = () => {
-    setTerminalLog("⚡ debugger: コンパイル環境をエミュレート中...");
+    setIsRunning(true);
+    setTerminalLog(`⚡ Compiling via ${lang.toUpperCase()} Virtual Backend...`);
+    
     setTimeout(() => {
-      const result = stage.runner(code);
-      setTerminalLog(result.log);
-      setIsSuccess(result.success);
-    }, 700);
+      try {
+        const result = stage.runner(code);
+        setTerminalLog(result.log);
+        setIsSuccess(result.success);
+      } catch (e: any) {
+        setTerminalLog(`🚨 Compile Error: ${e.message}`);
+        setIsSuccess(false);
+      }
+      setIsRunning(false);
+    }, 600);
+  };
+
+  const nextStage = () => {
+    if (currentIdx < CODE_STAGES.length - 1) {
+      setCurrentIdx(currentIdx + 1);
+    } else {
+      setIsSuccess(false);
+      setTerminalLog("🏆 全30ステージ完全制覇！世界トップクラスのバグフィックス能力です！！！");
+    }
   };
 
   const getLineNumbers = (text: string) => {
@@ -85,104 +101,143 @@ export default function CodeLab() {
     return Array.from({ length: Math.max(lines, 12) }, (_, i) => i + 1);
   };
 
-  return (
-    <div className="space-y-6 text-left">
-      
-      {/* 🌐 1階層：開発言語切り替えタブ */}
-      <div className="flex bg-[#2d2d2d] border border-[#3c3c3c] p-1 rounded-lg w-fit">
-        <button onClick={() => { setLang('js'); setCurrentIdx(0); }} className={`px-4 py-1.5 text-xs font-bold rounded transition ${lang === 'js' ? 'bg-[#0e639c] text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-          💛 JavaScript (10本)
-        </button>
-        <button onClick={() => { setLang('python'); setCurrentIdx(0); }} className={`px-4 py-1.5 text-xs font-bold rounded transition ${lang === 'python' ? 'bg-[#3776ab] text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-          💙 Python (10本)
-        </button>
-        <button onClick={() => { setLang('php'); setCurrentIdx(0); }} className={`px-4 py-1.5 text-xs font-bold rounded transition ${lang === 'php' ? 'bg-[#777bb4] text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-          💜 PHPテーマ開発 (10本)
-        </button>
-      </div>
+  const handleScroll = () => {
+    if (textareaRef.current && lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
 
-      {/* 🎛️ 2階層：バグ選択ロードマップ */}
-      <div className="bg-[#252526] border border-[#3c3c3c] p-2 rounded-lg flex items-center gap-1 overflow-x-auto text-xs">
-        <span className="text-[10px] font-bold text-[#858585] uppercase tracking-wider mr-2 font-mono">エラー番号:</span>
-        {STAGES[lang].map((s, idx) => (
+  const editorColor = lang === 'js' ? '#dcdcaa' : lang === 'python' ? '#9cdcfe' : '#c586c0';
+  const langBadgeColor = lang === 'js' ? 'bg-[#fbbf24] text-amber-950' : lang === 'python' ? 'bg-[#38bdf8] text-sky-950' : 'bg-[#c084fc] text-fuchsia-950';
+
+  return (
+    // 👑 究極の【上・中・下 3段水平分割（サンドイッチ）型レイアウト】
+    <div className="flex flex-col h-screen w-full bg-[#141414] overflow-hidden select-none font-sans text-left">
+      
+      {/* 🌐 最上部ヘッダー */}
+      <header className="bg-[#252526] border-b border-[#3c3c3c] px-4 py-2 flex justify-between items-center shrink-0 w-full z-10 shadow-md">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded font-mono">GACHI ALGORITHM ARENA</span>
+          <h2 className="text-xs font-bold text-slate-200">💻 CodeLab - バグフィックス＆アルゴリズム 全30問</h2>
+        </div>
+      </header>
+
+      {/* 👑 【上段】：全30問ストレートパノラマリストバー（横一列にズラリ！） */}
+      <div className="bg-[#1e1e1e] border-b border-[#3c3c3c] px-2 py-1.5 flex gap-2 overflow-x-auto text-xs items-center shrink-0 w-full scrollbar-hide">
+        <span className="text-[10px] font-bold text-[#858585] uppercase font-mono px-2 shrink-0">SELECT STAGE:</span>
+        {CODE_STAGES.map((s, idx) => (
           <button
-            key={s.id}
+            key={`stage-btn-${s.id}`}
             onClick={() => setCurrentIdx(idx)}
-            className={`px-2 py-0.5 rounded font-mono font-bold border transition ${currentIdx === idx ? 'bg-[#37373d] text-amber-400 border-amber-500 shadow-sm' : 'bg-[#1e1e1e] text-slate-400 border-transparent hover:border-slate-500'}`}
+            className={`px-3 py-1 rounded font-mono text-[11px] border flex items-center gap-1.5 transition shrink-0 ${
+              currentIdx === idx 
+                ? 'bg-[#37373d] text-cyan-400 border-cyan-400 font-bold shadow-md' 
+                : 'bg-[#141414] text-slate-400 border-transparent hover:bg-[#2d2d2d]'
+            }`}
           >
-            #{s.id}
+            <span>#{s.id < 10 ? `0${s.id}` : s.id}</span>
+            <span className={`text-[8px] font-black uppercase tracking-wider ${
+              s.category === 'js' ? 'text-amber-400' : s.category === 'python' ? 'text-sky-400' : 'text-fuchsia-400'
+            }`}>
+              {s.category}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* 📄 デバッグ仕様書 ＆ 動的解答 */}
-      <div className="bg-[#1e1e1e] border border-[#3c3c3c] p-4 rounded-lg border-l-4 border-rose-500 space-y-3 text-xs">
-        <div className="flex justify-between items-center">
-          <div className="font-bold text-rose-400 font-mono flex items-center gap-1">⚠️ STAGE {stage.id}：{stage.title}</div>
-          <button 
-            onClick={() => setShowAnswer(!showAnswer)} 
-            className="px-2 py-0.5 bg-[#252526] text-emerald-400 border border-[#3c3c3c] text-[10px] rounded font-bold hover:bg-[#333]"
-          >
-            {showAnswer ? '❌ 回答を閉じる' : '🔑 正解のヒント＆答えを見る'}
-          </button>
-        </div>
+      {/* 👑 【中段】：メイン記述 ＆ ミッション説明エリア（画面の主役！） */}
+      <div className="flex-1 flex overflow-hidden w-full relative border-b border-[#2d2d2d]">
         
-        <p className="text-slate-300 bg-[#252526] p-2.5 rounded border border-[#2b2b2b] leading-relaxed">{stage.mission}</p>
-        
-        {/* 💡 解答エリア */}
-        {showAnswer && (
-          <div className="bg-emerald-950/20 border border-emerald-900/60 p-3 rounded space-y-1.5 text-emerald-200">
-            <div><strong className="text-emerald-400">💡 デバッグ解説：</strong>{stage.hint}</div>
-            <div className="font-mono text-[11px] bg-black/30 p-2 rounded border border-emerald-900/40 whitespace-pre-wrap"><strong className="text-emerald-400 font-sans block mb-0.5">📋 模範アプローチ：</strong>{stage.answer || "初期コード内の記述エラーやタイポを修正して実行してください。"}</div>
-          </div>
-        )}
-      </div>
-
-      {/* 💻 エディタ ＆ ターミナル縦並び */}
-      <div className="space-y-4">
-        
-        {/* 🛠️ 上段：テキストエディタ */}
-        <div className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg flex flex-col overflow-hidden shadow-2xl">
-          <div className="bg-[#2d2d2d] flex border-b border-[#252526] text-xs text-slate-400 select-none">
-            <span className="px-4 py-2 bg-[#1e1e1e] text-yellow-500 font-bold border-t border-t-yellow-500 font-mono">
-              {lang === 'js' ? '💛 debug_script.js' : lang === 'python' ? '💙 error_fix.py' : '💜 single_bug.php'}
+        {/* 左側（メイン）：エディタ領域（ガッツリ広く！） */}
+        <main className="flex-1 flex flex-col bg-[#141414] relative overflow-hidden h-full">
+          <div className="bg-[#2d2d2d] text-slate-300 text-[11px] font-bold py-2 px-4 border-b border-[#3c3c3c] shrink-0 font-mono flex justify-between items-center">
+            <span>STAGE {stage.id}: {stage.title}</span>
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${langBadgeColor}`}>
+              {lang} Environment
             </span>
           </div>
-
-          <div className="flex font-mono text-xs bg-[#1e1e1e] p-2 min-h-[160px]">
-            <div className="w-8 text-right pr-2 text-[#5a5a5a] border-r border-[#2d2d2d] space-y-0.5 leading-relaxed pt-0.5 text-[11px] select-none font-mono">
-              {getLineNumbers(code).map((num) => <div key={num}>{num}</div>)}
+          
+          <div className="flex-1 flex overflow-hidden relative">
+            <div ref={lineNumbersRef} className="w-12 bg-[#1e1e1e] text-[#5a5a5a] font-mono text-[12px] text-right pr-3 py-4 border-r border-[#2d2d2d] overflow-hidden leading-relaxed shrink-0 select-none">
+              {getLineNumbers(code).map(num => <div key={num} className="h-[21px]">{num}</div>)}
             </div>
-            <textarea 
-              value={code} 
-              onChange={(e) => setCode(e.target.value)} 
-              className="flex-1 bg-transparent text-[#9cdcfe] pl-3 py-0.5 w-full h-full outline-none resize-none leading-relaxed font-mono whitespace-pre text-left overflow-x-auto" 
-              style={{ caretColor: '#fff' }} 
+            <textarea
+              ref={textareaRef}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onScroll={handleScroll}
+              className="flex-1 bg-transparent font-mono text-[14px] outline-none resize-none p-4 leading-relaxed text-left overflow-y-auto whitespace-pre h-full w-full"
+              style={{ color: editorColor, caretColor: '#fff', lineHeight: '21px' }}
+              spellCheck={false}
             />
           </div>
-        </div>
 
-        {/* 🚀 アクションボタン */}
-        <button 
-          onClick={handleRunDebug}
-          className={`w-full text-white font-bold text-xs py-2.5 rounded transition shadow-md uppercase tracking-wider ${isSuccess ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'}`}
-        >
-          {isSuccess ? '🎉 クリア！お見事！' : '⚡ デバッグコンパイルを実行する (F5)'}
-        </button>
+          {/* 👑 ド派手な「MISSION CLEAR」大画面エフェクト！！！ */}
+          {isSuccess && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
+              <div className="bg-emerald-950 border-2 border-emerald-500 p-8 rounded-2xl shadow-[0_0_80px_rgba(16,185,129,0.5)] text-center transform scale-100 hover:scale-105 transition-transform duration-300 w-[80%] max-w-md">
+                <div className="text-6xl mb-4 animate-bounce">🎉</div>
+                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300 mb-2">
+                  MISSION CLEAR!!
+                </h2>
+                <p className="text-emerald-200 text-xs mb-6 font-bold tracking-widest">
+                  完璧なバグフィックスですわ、お嬢様！！！
+                </p>
+                <button 
+                  onClick={nextStage} 
+                  className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-black px-6 py-3 rounded-full text-sm shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.8)] transition-all"
+                >
+                  次のミッションへ ➔
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
 
-        {/* 📟 下段：VS Code風出力ターミナルコンソール */}
-        <div className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg overflow-hidden shadow-2xl">
-          <div className="bg-[#252526] px-4 py-1.5 border-b border-[#2b2b2b] flex gap-4 text-xs font-sans text-slate-400 select-none">
-            <span className="text-white border-b-2 border-cyan-500 pb-0.5 font-bold">デバッグコンソール</span>
-            <span className="text-slate-500">ターミナル</span>
-            <span className="text-slate-500">出力</span>
+        {/* 右側：現在のミッション説明（w-[380px]でコンパクトに右端固定） */}
+        <aside className="w-[380px] bg-[#1e1e1e] border-l border-[#3c3c3c] flex flex-col shrink-0 h-full">
+          <div className="bg-[#1e1e1e] text-rose-400 font-bold text-[10px] px-3 py-2 uppercase tracking-wider select-none shrink-0 border-b border-[#2d2d2d] font-mono">
+            🎯 MISSION DETAILS
           </div>
-          <div className="bg-[#1e1e1e] p-4 min-h-[110px] font-mono text-xs text-left overflow-y-auto whitespace-pre-wrap text-slate-300">
+          <div className="p-5 bg-[#252526] flex-1 overflow-y-auto">
+            <h3 className="text-white font-bold text-[14px] mb-3">{stage.title}</h3>
+            <p className="text-slate-300 text-[13px] leading-relaxed font-bold bg-[#141414] p-4 border border-[#3c3c3c] rounded shadow-inner">
+              {stage.mission}
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      {/* 👑 【下段】：ガチターミナル ＆ 実行ボタンエリア（どっしりワイドに下を支える！） */}
+      <footer className="h-[220px] bg-[#0a0a0a] border-t border-[#3c3c3c] flex overflow-hidden shrink-0 w-full">
+        {/* 左側：リアルターミナルログ */}
+        <div className="flex-1 p-4 overflow-y-auto font-mono text-[12px] flex flex-col gap-1 border-r border-[#2d2d2d] text-left">
+          <div className="text-slate-500 mb-1 border-b border-[#222] pb-1 select-none">CodePlayground Console v2.5 - Output Log</div>
+          <div className={`leading-relaxed whitespace-pre-wrap ${
+            terminalLog.includes('🚨') ? 'text-rose-400 font-bold' : 
+            terminalLog.includes('✨') || terminalLog.includes('🏆') ? 'text-emerald-400 font-bold' : 
+            'text-cyan-300'
+          }`}>
             {terminalLog}
           </div>
         </div>
 
-      </div>
+        {/* 右側：デバッグ実行ボタン専用パネル */}
+        <div className="w-[240px] bg-[#1e1e1e] p-4 flex items-center justify-center shrink-0">
+          <button 
+            onClick={handleRunDebug} 
+            disabled={isRunning || isSuccess} 
+            className={`w-full h-full font-black rounded-xl text-[13px] uppercase tracking-widest transition-all shadow-2xl flex flex-col items-center justify-center gap-2 ${
+              isRunning ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 
+              isSuccess ? 'bg-emerald-600 text-white' : 'bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white active:scale-95'
+            }`}
+          >
+            <span className="text-xl">{isRunning ? '⏳' : isSuccess ? '✔' : '⚡'}</span>
+            <span>{isRunning ? 'Running...' : isSuccess ? 'Cleared' : 'RUN CODE'}</span>
+          </button>
+        </div>
+      </footer>
+
     </div>
   );
 }
