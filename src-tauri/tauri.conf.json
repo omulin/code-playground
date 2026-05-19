@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' http://localhost:5174; frame-src 'self' https://playground.wordpress.net; connect-src 'self' https://playground.wordpress.net; img-src 'self' data: https:;"
     }
   },
   "bundle": {

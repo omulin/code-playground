@@ -1,296 +1,237 @@
 import { useState, useEffect, useRef } from 'react';
 
+type DevMode = 'web' | 'wordpress';
+
+interface VirtualFile {
+  name: string;
+  code: string;
+  isCustom?: boolean;
+}
+
 interface WorkLabProps {
   onProjectAdded: (projectName: string, htmlContent: string) => void;
 }
 
-type ModeType = 'html-site' | 'wordpress-blog';
-
-interface FileData {
-  name: string;
-  language: 'html' | 'css' | 'javascript' | 'php';
-  content: string;
-}
-
 export default function WorkLab({ onProjectAdded }: WorkLabProps) {
-  const [mode, setMode] = useState<ModeType>('html-site');
-  const [projectName, setProjectName] = useState('マイ・オリジナルWebサイト');
-  const [workStatus, setWorkStatus] = useState<'idle' | 'coding' | 'done'>('idle');
+  const [devMode, setDevMode] = useState<DevMode>('web');
 
-  const [files, setFiles] = useState<FileData[]>([
-    {
-      name: 'index.html',
-      language: 'html',
-      content: `\n<div class="my-custom-site">\n  <h1>✨ My Creative Sandbox</h1>\n  <p>複数ページ、CSS、さらにはJavaScriptも自由に作れる最強の空間です。</p>\n  <button onclick="hello()">JSを実行してみる！</button>\n  <br><br>\n  <a href="about.html" style="color: cyan; font-weight: bold;">➔ Aboutページへ移動する</a>\n</div>`
-    },
-    {
-      name: 'about.html',
-      language: 'html',
-      content: `\n<div class="my-custom-site">\n  <h1>👋 About Me</h1>\n  <p>ここは追加された別ページです！ファイルの枠を越えて自由にリンクで繋げます。</p>\n  <a href="index.html" style="color: cyan; font-weight: bold;">⬅ トップに戻る</a>\n</div>`
-    },
-    {
-      name: 'style.css',
-      language: 'css',
-      content: `/* 🎨 自由なスタイリングCSS空間 */\n.my-custom-site {\n  background: linear-gradient(135deg, #1e1e38, #0f0f1a);\n  padding: 40px;\n  border-radius: 12px;\n  text-align: center;\n  color: #ffffff;\n  box-shadow: 0 10px 30px rgba(0,0,0,0.5);\n}\nh1 {\n  color: #06b6d4;\n  margin-bottom: 20px;\n}\nbutton {\n  padding: 10px 20px;\n  background: #06b6d4;\n  color: #fff;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  margin-top: 20px;\n  font-weight: bold;\n}`
-    },
-    {
-      name: 'script.js',
-      language: 'javascript',
-      content: `// ⚡ JavaScriptで自由な動きをつけよう！\nfunction hello() {\n  alert('WorkLabへようこそ！\\nJavaScriptも完璧に動作するようになりました！');\n}`
-    }
+  const [webFiles, setWebFiles] = useState<VirtualFile[]>([
+    { name: 'index.html', code: `<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { background: #141414; color: #06b6d4; text-align: center; font-family: sans-serif; padding-top: 50px; }\n  </style>\n</head>\n<body>\n  <h1>🌐 WEB FREE SANDBOX</h1>\n  <p>ここに自由にHTML/CSS/JSを書いて構築できますわ！</p>\n</body>\n</html>` },
+    { name: 'style.css', code: `/* 自由なCSSスタイルシート */\nh1 { font-size: 3rem; text-shadow: 0 0 10px rgba(6,182,212,0.5); }` },
+    { name: 'script.js', code: `// 自由なJavaScriptロジック\nconsole.log("Web Sandbox Ready.");` }
   ]);
 
-  const [activeFileName, setActiveFileName] = useState<string>('index.html');
-  const [browserPath, setBrowserPath] = useState<string>('index.html');
-  const [newFileName, setNewFileName] = useState('');
-  const [isAddingFile, setIsAddingFile] = useState(false);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
-  const [copied, setCopied] = useState(false);
+  const [wpFiles, setWpFiles] = useState<VirtualFile[]>([
+    { name: 'index.php', code: `<?php wp_head(); ?>\n\n<div style="padding: 40px; text-align: center; font-family: sans-serif; color: #38bdf8; background: #222; border-radius: 12px; margin: 20px; border: 2px solid #38bdf8;">\n  <h1>🔮 MY CUSTOM THEME BUILD</h1>\n  <p>PHPの動的パーツを組み込んで、最強のテーマを創りましょう。</p>\n</div>\n<?php wp_footer(); ?>` },
+    { name: 'functions.php', code: `<?php\n// テーマ固有の機能を定義\n` },
+    { name: 'sidebar.php', code: `\n<aside>\n  <h3>メニュー</h3>\n</aside>` }
+  ]);
 
-  const lineNumbersRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [activeWebIdx, setActiveWebIdx] = useState<number>(0);
+  const [activeWpIdx, setActiveWpIdx] = useState<number>(0);
+
+  const [newFileName, setNewFileName] = useState<string>("");
+  const [projectName, setProjectName] = useState<string>("My_Creation");
+  const [terminalLog, setTerminalLog] = useState<string>("⏳ システム起動中...");
+  const [saveStatus, setSaveStatus] = useState<string>("");
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const wpFilesRef = useRef<VirtualFile[]>(wpFiles);
+
+  const currentFiles = devMode === 'web' ? webFiles : wpFiles;
+  const currentIdx = devMode === 'web' ? activeWebIdx : activeWpIdx;
+  const currentFile = currentFiles[currentIdx] || currentFiles;
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'NAVIGATE') {
-        const targetPath = event.data.path;
-        if (files.some(f => f.name === targetPath)) {
-          setBrowserPath(targetPath);
-        } else {
-          alert(`エラー: ファイル '${targetPath}' はまだ作成されていません！\n「＋ ファイル追加」から作成してください。`);
-        }
+    wpFilesRef.current = wpFiles;
+  }, [wpFiles]);
+
+  // 👑 盗聴器：Playgroundが発する全ての通信を丸裸にする！
+  useEffect(() => {
+    const handlePlaygroundMessages = (event: MessageEvent) => {
+      // コンソールに受信したすべての生データを暴露
+      console.log("🕵️‍♂️ [盗聴データ]:", event.data);
+
+      let data = event.data;
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch (e) {}
+      }
+
+      // もし何らかの準備完了らしきシグナルがあればキャッチ
+      if (data && (data.type === 'playground_ready' || data.action === 'loaded' || data.type === 'ready' || data.type === 'wp_loaded')) {
+        setTerminalLog("🌟 仮想WordPressの起動完了シグナルを受信！自動インジェクトを開始します...");
+        executeThemeInject();
       }
     };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [files]);
 
-  const getLineNumbers = (text: string) => {
-    const lines = text.split('\n').length;
-    return Array.from({ length: Math.max(lines, 18) }, (_, i) => i + 1);
-  };
+    window.addEventListener('message', handlePlaygroundMessages);
+    return () => window.removeEventListener('message', handlePlaygroundMessages);
+  }, []);
 
-  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setFiles(prev => prev.map(f => f.name === activeFileName ? { ...f, content: val } : f));
-  };
+  useEffect(() => {
+    if (!iframeRef.current) return;
 
-  const handleScroll = () => {
-    if (textareaRef.current && lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+    if (devMode === 'web') {
+      setTerminalLog("🌐 READY: HTML/CSS/JS リアルタイムビューアーが接続されました。");
+      renderWebPreview(webFiles);
+    } else {
+      setTerminalLog("⚙️ WordPress Playgroundを初期化中...（自動マウントを待機しています）");
+      iframeRef.current.src = "https://playground.wordpress.net/?embed=1&storage=none";
     }
-  };
+  }, [devMode]);
 
-  const handleAddFile = () => {
-    if (!newFileName.trim()) return;
-    const name = newFileName.trim();
-    if (files.some(f => f.name === name)) {
-      alert('そのファイル名は既に存在します！');
-      return;
-    }
-    let language: 'html' | 'css' | 'javascript' | 'php' = 'html';
-    if (name.endsWith('.css')) language = 'css';
-    else if (name.endsWith('.js')) language = 'javascript';
-    else if (name.endsWith('.php')) language = 'php';
+  const executeThemeInject = () => {
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+    console.log("🚀 [インジェクト実行]: Blueprintデータを送信します", wpFilesRef.current);
 
-    setFiles([...files, { name, language, content: '' }]);
-    setActiveFileName(name);
-    setNewFileName('');
-    setIsAddingFile(false);
-  };
-
-  const renderVirtualBrowser = () => {
-    const targetFile = files.find(f => f.name === browserPath);
-    if (!targetFile) {
-      return (
-        <div className="w-full h-full bg-white text-rose-500 flex flex-col justify-center items-center font-bold">
-          <span>❌ 404 Not Found</span>
-          <span className="text-xs text-slate-400 mt-2 font-normal">ファイルが見つかりません</span>
-        </div>
-      );
-    }
-
-    let htmlRaw = targetFile.content;
-    
-    if (mode === 'wordpress-blog') {
-      htmlRaw = htmlRaw.replace(/<\?php bloginfo\('name'\);\s*\?>/g, "🚀 あなたのカスタム自由ブログ");
-      htmlRaw = htmlRaw.replace(/<\?php bloginfo\('description'\);\s*\?>/g, "ゼロからのクリエイティブWordPressテーマ空間");
-      htmlRaw = htmlRaw.replace(/<\?php the_title\(\);\s*\?>/g, "💡 自由な発想で生み出したオリジナル記事タイトル");
-      htmlRaw = htmlRaw.replace(/<\?php the_content\(\);\s*\?>/g, "ここにWordPressの本文がデータベースから動的に呼び出されます。");
-    }
-
-    const cssFiles = files.filter(f => f.language === 'css').map(f => f.content).join('\n');
-    const jsFiles = files.filter(f => f.language === 'javascript').map(f => f.content).join('\n');
-
-    const finalBlob = `
-      <html>
-        <head>
-          <style>${cssFiles}</style>
-          <style>
-            ::-webkit-scrollbar { width: 6px; height: 6px; }
-            ::-webkit-scrollbar-track { background: #f1f5f9; }
-            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-          </style>
-        </head>
-        <body style="margin:0; padding:20px; background:#f8fafc; font-family: sans-serif;">
-          ${htmlRaw}
-          <script>
-            ${jsFiles}
-            
-            document.addEventListener('click', function(e) {
-              const anchor = e.target.closest('a');
-              if (anchor) {
-                e.preventDefault();
-                const href = anchor.getAttribute('href');
-                if (href && !href.startsWith('#')) {
-                  window.parent.postMessage({ type: 'NAVIGATE', path: href }, '*');
-                }
-              }
-            });
-          </script>
-        </body>
-      </html>
-    `;
-
-    return (
-      <div className="flex-1 flex flex-col overflow-hidden bg-white rounded-lg border border-[#3c3c3c]">
-        <div className="bg-[#f1f5f9] text-slate-700 text-[10px] font-mono px-3 py-1.5 border-b border-slate-300 flex justify-between items-center shrink-0 select-none">
-          <div className="flex gap-2 items-center">
-            <span className="text-emerald-500">🔒 https://</span>
-            <span className="font-bold text-slate-800">localhost:3000/{browserPath}</span>
-          </div>
-          <div className="flex gap-1">
-            {files.filter(f => f.language === 'html' || f.language === 'php').map(f => (
-               <button key={`browser-nav-${f.name}`} onClick={() => setBrowserPath(f.name)} className={`px-2 py-0.5 text-[9px] rounded font-bold transition ${browserPath === f.name ? 'bg-sky-600 text-white' : 'bg-[#e2e8f0] text-slate-500 hover:bg-slate-300'}`}>
-                 {f.name}
-               </button>
-            ))}
-          </div>
-        </div>
-        <iframe srcDoc={finalBlob} className="flex-1 w-full border-none" sandbox="allow-scripts allow-modals allow-popups allow-same-origin" title="Live Preview" />
-      </div>
-    );
-  };
-
-  const handleDeliver = () => {
-    setWorkStatus('coding');
-    setTimeout(() => {
-      setWorkStatus('done');
-      if (typeof onProjectAdded === 'function') {
-        const allCss = files.filter(f => f.language === 'css').map(f => f.content).join('\n');
-        const allJs = files.filter(f => f.language === 'javascript').map(f => f.content).join('\n');
-        const mainHtml = files.find(f => f.name === 'index.html' || f.name === 'index.php')?.content || files.content;
-        
-        const finalOutput = `<style>${allCss}</style>\n${mainHtml}\n<script>${allJs}</script>`;
-        onProjectAdded(`${projectName} (Multi-file)`, finalOutput);
+    const blueprint = {
+      type: 'runBlueprint',
+      blueprint: {
+        landingPage: '/',
+        preferredVersion: { php: '8.1', wp: '6.4' },
+        steps: [
+          { step: 'mkdir', path: '/var/www/html/wp-content/themes/playground-theme' },
+          { 
+            step: 'writeFile', 
+            path: '/var/www/html/wp-content/themes/playground-theme/style.css', 
+            data: '/*\nTheme Name: Custom Sandbox Theme\nAuthor: Boss\nVersion: 1.0\n*/' 
+          },
+          ...wpFilesRef.current.map(f => ({
+            step: 'writeFile',
+            path: `/var/www/html/wp-content/themes/playground-theme/${f.name}`,
+            data: f.code
+          })),
+          { step: 'login', username: 'admin', password: 'password' },
+          { step: 'activateTheme', themeId: 'playground-theme' }
+        ]
       }
-    }, 1500);
+    };
+
+    iframeRef.current.contentWindow.postMessage(blueprint, '*');
+    setTerminalLog("✨ SUCCESS: 自作テーマが仮想空間へ完全にマウントされましたわ！");
   };
 
-  const activeFile = files.find(f => f.name === activeFileName) || files;
-  const textColor = activeFile.language === 'html' || activeFile.language === 'php' ? '#9cdcfe' : activeFile.language === 'css' ? '#ce9178' : '#dcdcaa';
+  const handleCompileWordPress = () => {
+    setTerminalLog("⚡ 手動リクエストを送信。最新のコードを再インジェクトします...");
+    executeThemeInject();
+  };
+
+  const renderWebPreview = (filesList: VirtualFile[]) => {
+    const html = filesList.find(f => f.name === 'index.html')?.code || "";
+    const css = filesList.find(f => f.name === 'style.css')?.code || "";
+    const js = filesList.find(f => f.name === 'script.js')?.code || "";
+
+    const combinedBlob = `${html}<style>${css}</style><script>${js}</script>`;
+    if (iframeRef.current && devMode === 'web') {
+      iframeRef.current.src = "data:text/html;charset=utf-8," + encodeURIComponent(combinedBlob);
+    }
+  };
+
+  const handleCodeChange = (newCode: string) => {
+    if (devMode === 'web') {
+      const updated = webFiles.map((f, i) => i === activeWebIdx ? { ...f, code: newCode } : f);
+      setWebFiles(updated);
+      renderWebPreview(updated);
+    } else {
+      const updated = wpFiles.map((f, i) => i === activeWpIdx ? { ...f, code: newCode } : f);
+      setWpFiles(updated);
+    }
+  };
+
+  const handleCreateFile = () => {
+    const trimmed = newFileName.trim();
+    if (!trimmed) return;
+    if (currentFiles.some(f => f.name === trimmed)) return;
+
+    const newFile: VirtualFile = {
+      name: trimmed,
+      code: trimmed.endsWith('.php') ? "<?php\n// 新しいPHPテンプレート\n" : "/* 新しいアセット */\n",
+      isCustom: true
+    };
+
+    if (devMode === 'web') {
+      const updated = [...webFiles, newFile];
+      setWebFiles(updated);
+      setActiveWebIdx(updated.length - 1);
+      renderWebPreview(updated);
+    } else {
+      const updated = [...wpFiles, newFile];
+      setWpFiles(updated);
+      setActiveWpIdx(updated.length - 1);
+    }
+    setNewFileName("");
+  };
+
+  const handleExportProject = () => {
+    if (!projectName.trim()) return;
+    let totalDump = `\n\n`;
+    currentFiles.forEach(f => { totalDump += `/* === [${f.name}] === */\n${f.code}\n\n`; });
+    onProjectAdded(`${projectName}.${devMode === 'web' ? 'html' : 'wordpress.php'}`, totalDump);
+    setSaveStatus("✨ PROJECT LAB に実績が保存されました！");
+    setTimeout(() => setSaveStatus(""), 3000);
+  };
 
   return (
-    <div className="space-y-4 text-left h-full flex flex-col p-2 lg:p-6" style={{ height: 'calc(100vh - 100px)' }}>
-      
-      <div className="bg-[#252526] border border-[#3c3c3c] p-3 rounded-lg flex flex-wrap justify-between items-center gap-4 shrink-0 shadow-md">
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded tracking-wider font-mono">📦 MULTI-FILE STUDIO</span>
-          <div className="bg-[#1e1e1e] p-1 rounded border border-[#3c3c3c] flex">
-            <button onClick={() => setMode('html-site')} className={`px-3 py-1 text-[11px] font-bold rounded transition ${mode === 'html-site' ? 'bg-[#0e639c] text-white' : 'text-slate-400'}`}>標準HP</button>
-            <button onClick={() => setMode('wordpress-blog')} className={`px-3 py-1 text-[11px] font-bold rounded transition ${mode === 'wordpress-blog' ? 'bg-[#0073aa] text-white' : 'text-slate-400'}`}>WordPressテーマ</button>
-          </div>
+    <div className="flex flex-col h-screen w-full bg-[#141414] overflow-hidden text-left relative">
+      <div className="bg-[#1e1e1e] border-b border-[#3c3c3c] px-4 py-2 flex justify-between items-center shrink-0 w-full z-10">
+        <div className="flex bg-[#0a0a0a] p-1 border border-[#2d2d2d] rounded-xl">
+          <button onClick={() => setDevMode('web')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${devMode === 'web' ? 'bg-indigo-600 text-white font-black shadow-md' : 'text-slate-500 hover:text-slate-300'}`}>🌐 WEB (HTML/CSS/JS)</button>
+          <button onClick={() => setDevMode('wordpress')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${devMode === 'wordpress' ? 'bg-cyan-600 text-white font-black shadow-md' : 'text-slate-500 hover:text-slate-300'}`}>🐘 WORDPRESS (WASM)</button>
+        </div>
+
+        {devMode === 'wordpress' && (
+          <button
+            onClick={handleCompileWordPress}
+            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black px-5 py-1.5 rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer animate-pulse"
+          >
+            ▶ プレビューに反映（テーマ有効化）
+          </button>
+        )}
+
+        <div className="flex items-center gap-2 border-x border-[#2d2d2d] px-4 mx-4">
+          <input type="text" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} placeholder={devMode === 'web' ? "ex) page2.html" : "ex) custom.php"} className="bg-[#141414] border border-[#3c3c3c] text-white text-[11px] px-3 py-1 rounded font-mono outline-none focus:border-cyan-500 w-42" />
+          <button onClick={handleCreateFile} className="bg-[#2d2d2d] hover:bg-[#37373d] text-slate-200 border border-[#3c3c3c] text-[11px] font-bold px-2.5 py-1 rounded transition cursor-pointer">➕ 追加</button>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-slate-400">プロジェクト名:</span>
-          <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-1 text-xs rounded outline-none font-sans focus:border-cyan-500" />
+          <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="bg-[#141414] border border-[#3c3c3c] text-white text-xs px-2 py-1 rounded font-mono outline-none w-24 text-center" />
+          <button onClick={handleExportProject} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3 py-1 rounded text-[11px] transition cursor-pointer">🚀 実績登録</button>
         </div>
       </div>
 
-      <div className="bg-[#252526] border border-[#3c3c3c] p-2 rounded-lg flex flex-col md:flex-row gap-2 items-center shrink-0 shadow-md">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-2">Image URL Generator</span>
-        {/* 👑【絶対防御版】?. を一切使わず、泥臭く安全な書き方に変更しました！！！ */}
-        <input type="file" accept="image/*" onChange={(e) => {
-          if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files;
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              if (reader.result) {
-                setUploadedImageUrl(String(reader.result));
-              }
-            };
-            reader.readAsDataURL(file);
-          }
-        }} className="text-[11px] text-slate-400 file:py-1 file:px-3 file:rounded file:border-0 file:bg-[#3c3c3c] file:text-white file:font-bold cursor-pointer" />
-        <input type="text" readOnly value={uploadedImageUrl || '← パソコンの画像を選ぶとここにHTML用のURLが生成されます'} className="flex-1 w-full bg-[#1e1e1e] border border-[#3c3c3c] text-slate-500 px-3 py-1.5 rounded text-[11px] font-mono truncate" />
-        {uploadedImageUrl && (
-          <button onClick={() => { navigator.clipboard.writeText(uploadedImageUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-3 py-1 text-[11px] bg-cyan-600 font-bold text-white rounded">
-            {copied ? '✓ コピー完了' : '📄 コピー'}
-          </button>
-        )}
-      </div>
-
-      <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-4 overflow-hidden">
-        
-        <div className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg flex flex-col overflow-hidden shadow-2xl h-full">
-          <div className="bg-[#2d2d2d] flex border-b border-[#252526] text-xs overflow-x-auto items-center shrink-0 scrollbar-hide">
-            {files.map(f => (
-              <button key={`tab-${f.name}`} onClick={() => setActiveFileName(f.name)} className={`px-4 py-2 border-r border-[#252526] whitespace-nowrap transition ${activeFileName === f.name ? 'bg-[#1e1e1e] text-white font-bold border-t-2 border-t-cyan-400' : 'bg-[#2d2d2d] text-slate-400 hover:bg-[#333]'}`}>
-                {f.language === 'html' ? '🧡' : f.language === 'css' ? '💙' : f.language === 'javascript' ? '💛' : '🐘'} {f.name}
-              </button>
-            ))}
-            {!isAddingFile ? (
-              <button onClick={() => setIsAddingFile(true)} className="px-4 py-2 text-slate-400 hover:text-white font-bold whitespace-nowrap">＋ 新規ファイル</button>
-            ) : (
-              <div className="flex items-center px-2">
-                <input type="text" value={newFileName} onChange={e => setNewFileName(e.target.value)} placeholder="contact.html" className="bg-[#141414] border border-[#3c3c3c] text-white px-2 py-1 text-[10px] rounded outline-none font-mono" autoFocus onKeyDown={e => e.key === 'Enter' && handleAddFile()} onBlur={() => setTimeout(() => setIsAddingFile(false), 200)} />
-                <button onClick={handleAddFile} className="ml-2 text-emerald-400 font-bold">✔</button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 flex font-mono text-[12px] bg-[#141414] overflow-hidden relative">
-            <div ref={lineNumbersRef} className="w-10 text-right pr-2 text-[#5a5a5a] border-r border-[#2d2d2d] leading-relaxed py-3 shrink-0 overflow-hidden select-none bg-[#1e1e1e]">
-              {getLineNumbers(activeFile.content).map((num) => <div key={`line-${num}`} className="h-[18px]">{num}</div>)}
+      <div className="flex-1 flex overflow-hidden w-full border-b border-[#2d2d2d]">
+        <div className="w-1/2 flex flex-col border-r border-[#2d2d2d] h-full bg-[#141414]">
+          <div className="bg-[#1e1e1e] border-b border-[#2d2d2d] flex text-xs shrink-0 overflow-x-auto scrollbar-hide items-center justify-between pr-3">
+            <div className="flex">
+              {currentFiles.map((file, i) => (
+                <button key={file.name} onClick={() => devMode === 'web' ? setActiveWebIdx(i) : setActiveWpIdx(i)} className={`px-4 py-2 border-r border-[#2b2b2b] font-mono transition-all text-[11px] flex items-center gap-1.5 shrink-0 ${currentIdx === i ? 'bg-[#141414] text-amber-400 border-t-2 border-amber-500 font-bold' : 'bg-[#2d2d2d]/40 text-slate-500 hover:bg-[#2d2d2d]'}`}>
+                  <span>{file.name.endsWith('.php') ? '🐘' : file.name.endsWith('.html') ? '🌐' : '📄'}</span>
+                  <span>{file.name}</span>
+                  {file.isCustom && <span className="text-[7px] bg-[#2d2d2d] text-slate-400 px-1 rounded">NEW</span>}
+                </button>
+              ))}
             </div>
-            <textarea 
-              ref={textareaRef}
-              value={activeFile.content} 
-              onChange={handleCodeChange} 
-              onScroll={handleScroll}
-              className="flex-1 bg-transparent pl-3 py-3 w-full h-full outline-none resize-none leading-relaxed font-mono whitespace-pre text-left overflow-y-auto" 
-              style={{ color: textColor, caretColor: '#fff', lineHeight: '18px' }} 
-              spellCheck={false}
-              placeholder={`${activeFile.name} のコードをここに記述してください...`}
-            />
+            {saveStatus && <span className="text-[10px] text-emerald-400 font-mono font-bold animate-pulse shrink-0">{saveStatus}</span>}
           </div>
+          <textarea value={currentFile?.code || ""} onChange={(e) => handleCodeChange(e.target.value)} className="flex-1 bg-[#141414] text-[#dcdcaa] font-mono text-[13.5px] outline-none resize-none p-5 leading-relaxed h-full w-full select-text" style={{ lineHeight: '21px' }} spellCheck={false} />
         </div>
 
-        <div className="flex flex-col gap-4 overflow-hidden h-full">
-          <div className="flex-1 flex flex-col bg-[#252526] border border-[#3c3c3c] p-3 rounded-lg shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center mb-2 shrink-0">
-              <h3 className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">🌐 MULTI-PAGE LIVE PREVIEW</h3>
-              <span className="text-[9px] bg-slate-700 text-white px-2 py-0.5 rounded">JS & Links Active</span>
-            </div>
-            {renderVirtualBrowser()}
+        <div className="w-1/2 flex flex-col h-full bg-[#1a1a1a]">
+          <div className="bg-[#1e1e1e] text-cyan-400 font-bold text-[10px] px-3 py-2 border-b border-[#2d2d2d] font-mono flex justify-between items-center">
+            <span>🖥️ LIVE PREVIEW ({devMode === 'web' ? 'HYPER TEXT VIEW' : 'WP WASM SANDBOX'})</span>
+            <span className={`text-[8px] px-1 rounded font-black ${devMode === 'web' ? 'bg-indigo-950 text-indigo-400' : 'bg-cyan-950 text-cyan-400'}`}>{devMode === 'web' ? 'BLAZING FAST DIRECT' : 'UNIVERSAL GATE'}</span>
           </div>
-
-          <div className="shrink-0 bg-[#252526] border border-[#3c3c3c] p-3 rounded-lg shadow-2xl">
-            {workStatus !== 'done' ? (
-              <button onClick={handleDeliver} disabled={workStatus === 'coding'} className="w-full bg-[#007acc] hover:bg-[#005a9e] text-white font-bold text-xs py-3 rounded uppercase tracking-wider transition shadow-lg">
-                {workStatus === 'coding' ? '⏳ 複数ファイルをパッケージング中...' : '✔ この作品を完成させて Project Lab へ登録保存する'}
-              </button>
-            ) : (
-              <div className="p-3 bg-emerald-900/30 border border-emerald-600 rounded text-center">
-                <p className="text-emerald-400 font-bold text-xs">🚀 SUCCESS: 全ファイルが結合されポートフォリオに追加されました！</p>
-                <button onClick={() => setWorkStatus('idle')} className="text-[10px] text-cyan-400 hover:underline mt-1 block mx-auto">続けてさらに作り込む</button>
-              </div>
-            )}
+          <div className="flex-1 p-2 bg-[#111] flex relative h-full">
+            <iframe ref={iframeRef} className="w-full h-full bg-white rounded-lg shadow-2xl" title="WorkLab Arena" />
           </div>
         </div>
-
       </div>
+
+      <footer className="h-[40px] bg-[#0a0a0a] flex shrink-0 w-full p-2 border-t border-[#222]">
+        <div className="flex-1 overflow-y-auto font-mono text-[11px] text-left">
+          <div className={`leading-relaxed whitespace-pre-wrap ${devMode === 'web' ? 'text-indigo-400' : 'text-emerald-400 font-bold'}`}>{terminalLog}</div>
+        </div>
+      </footer>
     </div>
   );
 }
