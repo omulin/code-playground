@@ -12,11 +12,9 @@ export default function TraceLab() {
   const [browserPath, setBrowserPath] = useState<string>('index.html');
   const [isPassed, setIsPassed] = useState<boolean>(false);
 
-  // エディタ側のスクロール同期Ref
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ステージ切り替え時、またはデータ読み込み時の初期化
   useEffect(() => {
     if (!stage || !stage.pages || stage.pages.length === 0) return;
 
@@ -53,7 +51,6 @@ export default function TraceLab() {
     }
   };
 
-  // HTMLとCSSを動的にガッチャンコして描画するプレビュー
   const renderVirtualBrowser = () => {
     const targetPath = browserPath || 'index.html';
     const htmlRaw = userCodes[targetPath] || '';
@@ -85,7 +82,34 @@ export default function TraceLab() {
           <span className="text-emerald-500">🔒 https://</span>
           <span className="font-bold text-slate-800">localhost:1420/{targetPath}</span>
         </div>
-        <div className="flex-1 w-full overflow-auto" dangerouslySetInnerHTML={{ __html: finalBlob }} />
+        {/* 👑 ここに「リンククリック時のアプリ崩壊防御＆スムーズスクロール機能」を大復活！！！ */}
+        <div 
+          className="flex-1 w-full overflow-auto" 
+          dangerouslySetInnerHTML={{ __html: finalBlob }} 
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            const anchor = target.closest('a');
+            if (anchor) {
+              e.preventDefault(); // 👑 デスクトップアプリ自体の画面遷移（崩壊）を絶対阻止！
+              const href = anchor.getAttribute('href');
+              
+              if (href && href.startsWith('#')) {
+                // ページ内リンク（#sec-2など）の処理：プレビュー内でスムーズスクロール！
+                const id = href.substring(1);
+                const container = e.currentTarget as HTMLElement;
+                const targetEl = container.querySelector('#' + id);
+                if (targetEl) {
+                  targetEl.scrollIntoView({ behavior: 'smooth' });
+                }
+              } else if (href && userCodes[href] !== undefined) {
+                // 別ファイルへの仮想遷移
+                setBrowserPath(href);
+              } else if (href) {
+                alert(`エラー: '${href}' はまだ作成されていないか、存在しません！`);
+              }
+            }
+          }}
+        />
       </div>
     );
   };
@@ -106,10 +130,9 @@ export default function TraceLab() {
   const userLineNumbers = Array.from({ length: Math.max((userCodes[activeFileName] || '').split('\n').length, 1) }, (_, i) => i + 1);
 
   return (
-    // 👑 完璧なフルフラット化：内枠の不要なマージンやパディングを「0」にし、Tauriの窓の底辺まで高さを100%自動追従させる！
     <div className="w-full flex-1 flex flex-col overflow-hidden bg-[#141414]">
       
-      {/* ラボ専用：上部インフォヘッダー（無駄な余白や丸みを排したインダストリアルデザイン） */}
+      {/* 最上部ヘッダー */}
       <div className="bg-[#252526] border-b border-[#3c3c3c] px-3 py-1.5 flex items-center justify-between shrink-0 w-full select-none">
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded font-mono">TRACE STADIUM</span>
@@ -158,9 +181,6 @@ export default function TraceLab() {
         </div>
       </div>
 
-      {/* 👑 【大画面全面開放スタジアム】
-          邪魔をしていた「一回り中の四角いカード（div）」を跡形もなく完全爆破！！！
-          画面全体をフルに横3分割し、文字入力エリアの限界横幅を物理的に100%全開放！！！ */}
       <div className="flex-1 w-full grid grid-cols-3 gap-0 overflow-hidden items-stretch bg-[#141414]">
         
         {/* ① 左：[見本コード] */}
@@ -190,7 +210,6 @@ export default function TraceLab() {
             <div ref={lineNumbersRef} className="w-10 bg-[#141414] text-[#5a5a5a] font-mono text-[11px] text-right pr-2 py-3 border-r border-[#2d2d2d] select-none overflow-hidden leading-relaxed shrink-0">
               {userLineNumbers.map(ln => <div key={`user-ln-${ln}`} className="h-[18px]">{ln}</div>)}
             </div>
-            {/* 👑 邪魔なカード枠の壁が消えたため、テキストエリアそのものが右側の境界線ギリギリまで100%フルに広がりきります！！ */}
             <textarea
               ref={textareaRef}
               value={userCodes[activeFileName] || ''}
