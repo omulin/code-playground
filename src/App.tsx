@@ -7,10 +7,11 @@ import MissionLab from './labs/MissionLab';
 import WorkLab from './labs/WorkLab';
 import ProjectLab from './labs/ProjectLab';
 import TraceLab from './labs/TraceLab';
-import WpTraceLab from './labs/WpTraceLab'; // 👑 新設したWordPress専用写経ラボをインポート！
+import WpTraceLab from './labs/WpTraceLab';
+import LearningLab from './labs/LearningLab'; // 🎓 新設したProGATE風ラボをインポート！
 
-// 👑 モード型に 'wptrace' を完全新規追加！
-type Mode = 'top' | 'design' | 'visual' | 'code' | 'quiz' | 'mission' | 'work' | 'project' | 'trace' | 'wptrace';
+// 🎓 モード型に 'learn' を追加！
+type Mode = 'top' | 'design' | 'visual' | 'code' | 'quiz' | 'mission' | 'work' | 'project' | 'trace' | 'wptrace' | 'learn';
 
 interface ProjectItem {
   name: string;
@@ -49,9 +50,13 @@ export default function App() {
       {/* 🗂️ メインレイアウト */}
       <div className="flex-1 flex overflow-hidden w-full">
         
-        {/* 🎛️ 左端：アクティビティバー（WordPress写経用の新しいアイコン 🐘 を追加！） */}
+        {/* 🎛️ 左端：アクティビティバー */}
         <aside className="w-12 bg-[#333333] border-r border-[#2b2b2b] flex flex-col items-center py-4 gap-6 text-xl text-[#858585] shrink-0">
           <button onClick={() => setMode('top')} className={`hover:text-white transition ${mode === 'top' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📁</button>
+          
+          {/* 🎓 学習ラボを追加！ */}
+          <button onClick={() => setMode('learn')} className={`hover:text-white transition ${mode === 'learn' ? 'text-indigo-400 border-l-2 border-indigo-400 w-full font-bold' : ''}`}>🎓</button>
+          
           <button onClick={() => setMode('mission')} className={`hover:text-white transition ${mode === 'mission' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📝</button>
           <button onClick={() => setMode('trace')} className={`hover:text-white transition ${mode === 'trace' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>✍️</button>
           <button onClick={() => setMode('wptrace')} className={`hover:text-white transition ${mode === 'wptrace' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full font-bold' : ''}`}>🐘</button>
@@ -63,12 +68,16 @@ export default function App() {
           <button onClick={() => setMode('project')} className={`hover:text-white transition ${mode === 'project' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>🚀</button>
         </aside>
 
-        {/* 📂 左サイドバー：ファイルエクスプローラー（WpTraceLab.json を完全新規追加！） */}
+        {/* 📂 左サイドバー：ファイルエクスプローラー */}
         <nav className="w-60 bg-[#252526] border-r border-[#2b2b2b] p-4 hidden md:flex flex-col text-left text-xs text-[#cccccc] shrink-0">
           <div className="font-bold text-[10px] text-[#858585] uppercase tracking-wider mb-3">エクスプローラー</div>
           <div className="space-y-1">
             <div className="text-[#858585] font-bold">▼ src / labs</div>
             <button onClick={() => setMode('top')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'top' ? 'bg-[#37373d] text-white font-bold' : ''}`}>🏠 Welcome.md</button>
+            
+            {/* 🎓 学習ラボをエクスプローラーに追加！ */}
+            <button onClick={() => setMode('learn')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'learn' ? 'bg-[#37373d] text-indigo-400 font-bold border-l-2 border-indigo-500' : ''}`}>🎓 LearningLab.tsx</button>
+            
             <button onClick={() => setMode('mission')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'mission' ? 'bg-[#37373d] text-amber-400 font-bold border-l-2 border-amber-500' : ''}`}>📝 MissionLab.json</button>
             <button onClick={() => setMode('trace')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'trace' ? 'bg-[#37373d] text-orange-400 font-bold border-l-2 border-orange-500' : ''}`}>✍️ TraceLab.tsx</button>
             <button onClick={() => setMode('wptrace')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'wptrace' ? 'bg-[#37373d] text-cyan-400 font-bold border-l-2 border-cyan-500' : ''}`}>🐘 WpTraceLab.json</button>
@@ -82,11 +91,11 @@ export default function App() {
         </nav>
 
         {/* 📄 右側：メインコンテンツ表示エリア */}
-        {/* TraceLabとWpTraceLabの時は二重スクロールを防ぐために 'overflow-hidden' に指定！ */}
-        <main className={`flex-1 flex flex-col bg-[#1e1e1e] w-full ${mode === 'trace' || mode === 'wptrace' ? 'p-0 overflow-hidden' : 'overflow-y-auto'}`}>
+        {/* 🎓 learn の時も全画面レイアウトにするために条件を追加 */}
+        <main className={`flex-1 flex flex-col bg-[#1e1e1e] w-full ${mode === 'trace' || mode === 'wptrace' || mode === 'learn' ? 'p-0 overflow-hidden' : 'overflow-y-auto'}`}>
           
           {/* 上部タブバーの制御 */}
-          {mode !== 'trace' && mode !== 'wptrace' && (
+          {mode !== 'trace' && mode !== 'wptrace' && mode !== 'learn' && (
             <div className="bg-[#2d2d2d] flex border-b border-[#2b2b2b] text-xs shrink-0">
               <div className="bg-[#1e1e1e] text-white px-4 py-2 border-t-2 border-cyan-400">
                 {mode === 'top' ? 'Welcome.md' : `${mode.toUpperCase()}LAB.tsx`}
@@ -94,7 +103,7 @@ export default function App() {
             </div>
           )}
 
-          <div className={`w-full mx-auto flex-1 flex flex-col ${mode === 'trace' || mode === 'wptrace' ? 'max-w-none p-0 h-full overflow-hidden' : 'p-8 max-w-5xl overflow-y-auto'}`}>
+          <div className={`w-full mx-auto flex-1 flex flex-col ${mode === 'trace' || mode === 'wptrace' || mode === 'learn' ? 'max-w-none p-0 h-full overflow-hidden' : 'p-8 max-w-5xl overflow-y-auto'}`}>
             
             {/* 🏠 TOP MENU */}
             {mode === 'top' && (
@@ -110,6 +119,13 @@ export default function App() {
                   <div className="space-y-4">
                     <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">▼ Mainクリエイティブ</h3>
                     <div className="space-y-2">
+                      
+                      {/* 🎓 TOP画面に LearningLab 起動ボタンを追加 */}
+                      <button onClick={() => setMode('learn')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-indigo-500/30 bg-indigo-950/5 rounded group transition">
+                        <div className="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition">🎓 Learning Lab (ステップアップ学習コース)</div>
+                        <div className="text-[11px] text-[#858585] mt-1">ProGATE風のステップ・バイ・ステップ形式で、HTML/CSSの基礎から実践まで手を動かして学ぶ。</div>
+                      </button>
+
                       <button onClick={() => setMode('mission')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
                         <div className="text-xs font-bold text-amber-400 group-hover:text-amber-300 transition">📝 Mission Lab (全20ステージの修行)</div>
                         <div className="text-[11px] text-[#858585] mt-1">解説と答えを確認しながら、お題に沿ってHP制作・WPテーマ開発の基本をマスターする。</div>
@@ -141,7 +157,7 @@ export default function App() {
                         { id: 'code', title: '💻 Code Lab', desc: 'バグを見つけて修正する' },
                         { id: 'quiz', title: '❓ Quiz Lab', desc: 'ITの必須基礎知識クイズ' }
                       ].map((btn) => (
-                        <button key={btn.id} onClick={() => btn.id === 'wptrace' ? setMode('wptrace') : setMode(btn.id as Mode)} className="text-left p-3 bg-[#252526]/60 hover:bg-[#2d2d2d] border border-[#2b2b2b] rounded group transition">
+                        <button key={btn.id} onClick={() => setMode(btn.id as Mode)} className="text-left p-3 bg-[#252526]/60 hover:bg-[#2d2d2d] border border-[#2b2b2b] rounded group transition">
                           <div className="text-xs font-bold text-[#cccccc] group-hover:text-cyan-400 transition">{btn.title}</div>
                           <div className="text-[10px] text-[#717171] mt-1 leading-relaxed">{btn.desc}</div>
                         </button>
@@ -163,10 +179,11 @@ export default function App() {
             {mode === 'code' && <CodeLab />}
             {mode === 'quiz' && <QuizLab />}
             {mode === 'trace' && <TraceLab />}
-            {mode === 'wptrace' && <WpTraceLab />} {/* 👑 新設した WpTraceLab をここで呼び出し！ */}
+            {mode === 'wptrace' && <WpTraceLab />}
             {mode === 'mission' && <MissionLab onProjectAdded={addProject} />}
             {mode === 'work' && <WorkLab onProjectAdded={addProject} />}
             {mode === 'project' && <ProjectLab projects={projects} />}
+            {mode === 'learn' && <LearningLab />} {/* 🎓 新設した LearningLab を呼び出し！ */}
 
           </div>
         </main>
