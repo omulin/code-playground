@@ -1,344 +1,201 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
-type WpFileName = 'index.php' | 'functions.php' | 'sidebar.php';
-
-interface WpStage {
+// --- 1. WordPress写経レッスンの設計図 ---
+interface WpLesson {
   id: number;
   title: string;
-  mission: string;
-  hint: string;
-  answerCode: string;
-  files: Record<WpFileName, string>;
-  activeFile: WpFileName;
-  expectedKeyword: string;
-  checkFile: WpFileName;
+  description: string;
+  fileName: string;
+  code: string;
 }
 
-const WP_STAGES: WpStage[] = [
+const WP_LESSONS: WpLesson[] = [
   {
     id: 1,
-    title: "WP 01: WordPress化の第一歩（コアフックの設置）",
-    mission: "静的なHTMLをWordPressテーマとして動かすための絶対ルールです。index.php の </head> 直前に wp_head(); を、</body> 直前に wp_footer(); をPHPタグで記述して、WordPressコアのシステムと接続してください。",
-    hint: "<?php wp_head(); ?> や <?php wp_footer(); ?> を適切な位置に挿入しますわ！",
-    answerCode: `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <title>My First WP Theme</title>\n  <?php wp_head(); ?>\n</head>\n<body>\n  <div id="wrap">\n    <h1>WordPressテーマの世界へようこそ！</h1>\n  </div>\n  <?php wp_footer(); ?>\n</body>\n</html>`,
-    activeFile: "index.php",
-    checkFile: "index.php",
-    expectedKeyword: "wp_footer",
-    files: {
-      "index.php": `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <title>My First WP Theme</title>\n  \n  \n</head>\n<body>\n  <div id="wrap" style="padding: 30px; text-align: center; font-family: sans-serif; background: #f9f9f9; border-radius: 12px; margin: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">\n    <h1 style="color: #21759b;">WordPressテーマの世界へようこそ！</h1>\n    <p>まだこの状態では、ただの静的なHTMLですわ。</p>\n  </div>\n  \n  \n\n</body>\n</html>`,
-      "functions.php": "<?php\n// テーマの機能を定義するファイルです\n",
-      "sidebar.php": "\n<aside>\n  <h3>サイドバーメニュー</h3>\n</aside>"
-    }
+    title: "Step 1: 固定ページの作成",
+    description: "まずは右パネルのボタンからWordPressを起動します。画面上部の黒いバーにある「＋ 新規」から「固定ページ」を開き、タイトルに『次世代LPプロジェクト』と入力してください。",
+    fileName: "操作マニュアル 1",
+    code: "/* \n【ミッション】\n1. 別タブでWPを開く\n2. 「＋ 新規」＞「固定ページ」を作成\n3. タイトルに「次世代LPプロジェクト」と入力\n\n※このステップはコピペ不要です！右の画面を操作してください。\n*/"
   },
   {
     id: 2,
-    title: "WP 02: メインループ（動的な記事一覧の出力）",
-    mission: "WordPressの心臓部、投稿記事を自動でループ出力するロジックを作ります。index.php 内に、記事があるか判定する if (have_posts()) と、ループを回す while (have_posts())、環境を整える the_post(); を記述してください。",
-    hint: "if (have_posts()) : while (have_posts()) : the_post(); ... endwhile; endif; の伝統的な構文ですわ！",
-    answerCode: `\n<?php get_header(); ?>\n<main>\n  <h2>最新の新着記事一覧</h2>\n\n  <?php if (have_posts()) : while (have_posts()) : the_post(); ?>\n    <article>\n      <h3><?php the_title(); ?></h3>\n      <div><?php the_content(); ?></div>\n    </article>\n  <?php endwhile; endif; ?>\n\n</main>\n<?php get_footer(); ?>`,
-    activeFile: "index.php",
-    checkFile: "index.php",
-    expectedKeyword: "the_post",
-    files: {
-      "index.php": `<?php get_header(); ?>\n<main>\n  <h2>最新の新着記事一覧</h2>\n\n  \n  \n    <article>\n      <h3><?php the_title(); ?></h3>\n      <div><?php the_content(); ?></div>\n    </article>\n  \n  \n\n</main>\n<?php get_footer(); ?>`,
-      "functions.php": "<?php\n// テーマの拡張\n",
-      "sidebar.php": "<aside>サイドバー</aside>"
-    }
+    title: "Step 2: 【ノーコード】画像の挿入",
+    description: "まずはWordPressの標準機能（ノーコード）の力を体験します！本文エリアの「＋」ボタンから『画像』ブロックを選び、「メディアライブラリ」から適当な画像を1枚選んで（またはPCからアップロードして）ページの一番上に配置してください。",
+    fileName: "操作マニュアル 2",
+    code: "/* \n【ミッション】\n1. 「＋」ボタンから『画像』ブロックを追加\n2. 好きな画像をページに配置する\n\nWordPress最大の強みである「直感的なメディア管理」を\nここで体験しておきましょう！\n*/"
   },
   {
     id: 3,
-    title: "WP 03: テンプレートパーツの切り離し（モジュール化）",
-    mission: "運用性を高めるため、共通のサイドバーを別ファイルに切り離します。index.php の中から直接書かれているサイドバーを削除し、代わりに sidebar.php を動的に合体させる get_sidebar(); 関数を記述してください。",
-    hint: "<?php get_sidebar(); ?> を呼び出すことで、別ファイルの sidebar.php がこの場所に召喚されますわ！",
-    answerCode: `\n<?php wp_head(); ?>\n<div class="container" style="display:flex; gap:20px;">\n  <main style="flex:1;">\n    <h2>メインコンテンツ領域</h2>\n  </main>\n\n  <?php get_sidebar(); ?>\n</div>\n<?php wp_footer(); ?>`,
-    activeFile: "index.php",
-    checkFile: "index.php",
-    expectedKeyword: "get_sidebar",
-    files: {
-      "index.php": `<?php wp_head(); ?>\n<div class="container" style="display:flex; gap:20px;">\n  <main style="flex:1;">\n    <h2>メインコンテンツ領域</h2>\n    <p>ここはメインの記事画面ですわ。</p>\n  </main>\n\n  \n  \n</div>\n<?php wp_footer(); ?>`,
-      "functions.php": "<?php\n",
-      "sidebar.php": `<aside style="width:250px; background:#252526; padding:15px; border-radius:8px;">\n  <h3 style="color:#61afef;">📬 仮想サイドバー</h3>\n  <ul>\n    <li>新着のブログ記事</li>\n    <li>プロフィール</li>\n  </ul>\n</aside>`
-    }
+    title: "Step 3: 「カスタムHTML」の召喚",
+    description: "画像の配置が終わったら、その画像の「下」に新しいブロックを追加します。「＋」ボタンを押し、検索窓に「html」と入力して『カスタムHTML』ブロックを呼び出してください。ここからがエンジニアの領域です！",
+    fileName: "操作マニュアル 3",
+    code: "/* \n【ミッション】\n1. 配置した画像の下に『カスタムHTML』ブロックを追加\n\nここからは「コピーして上書き」の連続で、\n一気にサイトを組み上げていきます！\n*/"
   },
   {
     id: 4,
-    title: "WP 04: functions.phpによるカスタムメニューの有効化",
-    mission: "管理画面にメニュー設定機能を出現させます。functions.php を開き、WordPressにナビゲーションメニューの存在を登録する register_nav_menus(); 関数を記述してください。",
-    hint: "register_nav_menus( array( 'main-menu' => 'Main Navigation' ) ); のように記述しますわ！",
-    answerCode: `// 【functions.phpの正解コード見本】\n<?php\n// カスタムメニューをシステムに登録する\nregister_nav_menus( array(\n    'main-menu' => 'Main Navigation',\n) );`,
-    activeFile: "functions.php",
-    checkFile: "functions.php",
-    expectedKeyword: "register_nav_menus",
-    files: {
-      "index.php": "<?php wp_head(); ?>\n<h1>メニュー登録の修行</h1>\n<?php wp_footer(); ?>",
-      "functions.php": `<?php\n// 📝 ここにカスタムメニューをシステムに登録する関数を記述してください\n// 引数にはarrayでメニューの「識別子 => 表示名」を与えますわ！\n\n\n`,
-      "sidebar.php": "<aside>サイドバー</aside>"
-    }
+    title: "Step 4: ヒーローセクション（骨組み）",
+    description: "カスタムHTMLの中に、サイトの顔となる「ヒーローセクション」のHTMLを書きます。以下のコードをコピーして貼り付けてください。（※ブロック上部の「プレビュー」を押すと確認できます！）",
+    fileName: "カスタムHTML",
+    code: "<div class=\"lp-wrapper\">\n  \n  <section class=\"hero\">\n    <h1 class=\"hero-title\">次世代の学習体験を。</h1>\n    <p class=\"hero-sub\">コードを書きながら、実務のスキルを身につけよう。</p>\n    <a href=\"#pricing\" class=\"btn-primary\">今すぐ始める</a>\n  </section>\n</div>"
   },
   {
     id: 5,
-    title: "WP 05: 最終奥義（カスタムメニューの動的画面出力）",
-    mission: "前のステージで有効化したメニューを、index.php のナビゲーションバー（<nav>内）に動的出力します。wp_nav_menu(); 関数を記述し、引数のテーマロケーションに 'main-menu' を指定してください。",
-    hint: "wp_nav_menu( array( 'theme_location' => 'main-menu' ) ); で、登録したメニューが画面に爆誕しますわ！",
-    answerCode: `\n<?php wp_head(); ?>\n<header style="background:#2d2d2d; padding:15px;">\n  <nav class="global-navigation">\n    <?php wp_nav_menu( array( 'theme_location' => 'main-menu' ) ); ?>\n  </nav>\n</header>\n<?php wp_footer(); ?>`,
-    activeFile: "index.php",
-    checkFile: "index.php",
-    expectedKeyword: "wp_nav_menu",
-    files: {
-      "index.php": `<?php wp_head(); ?>\n<header style="background:#2d2d2d; padding:15px;">\n  <div class="logo">PRO GLOBAL LOGO</div>\n  \n  <nav class="global-navigation">\n    \n    \n  </nav>\n</header>\n<main style="padding:20px;">\n  <h2>動的フルカスタムサイトが完成いたしました！</h2>\n</main>\n<?php wp_footer(); ?>`,
-      "functions.php": `<?php\n// 前のステージで有効化したメニュー設定\nregister_nav_menus( array(\n    'main-menu' => 'Main Navigation',\n) );`,
-      "sidebar.php": "<aside>サイドバー</aside>"
-    }
+    title: "Step 5: ヒーローセクション（デザイン）",
+    description: "先ほどのコードを【全選択して消去（Ctrl+A ➔ Delete）】し、以下のコードに上書きしてください！一番上に `<style>` タグを追加し、背景に美しいグラデーションをかけました。",
+    fileName: "カスタムHTML (上書き)",
+    code: "<style>\n  /* ★ 追加: サイト全体の基本フォントと、ヒーロー画面の美しいグラデーション */\n  .lp-wrapper { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; }\n  .hero { \n    background: linear-gradient(135deg, #4f46e5, #0ea5e9); \n    color: white; padding: 120px 20px; text-align: center; \n    border-radius: 0 0 50px 50px; \n  }\n  .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 10px; color: white; }\n  .hero-sub { font-size: 1.2rem; opacity: 0.9; margin-bottom: 30px; }\n</style>\n\n<div class=\"lp-wrapper\">\n  <section class=\"hero\">\n    <h1 class=\"hero-title\">次世代の学習体験を。</h1>\n    <p class=\"hero-sub\">コードを書きながら、実務のスキルを身につけよう。</p>\n    <a href=\"#pricing\" class=\"btn-primary\">今すぐ始める</a>\n  </section>\n</div>"
+  },
+  {
+    id: 6,
+    title: "Step 6: 特徴セクション（骨組み）",
+    description: "ふたたび【全選択して上書き】します。ヒーロー画面の下に、プロダクトの強みを伝える「選ばれる3つの理由」のHTMLを追加しました。",
+    fileName: "カスタムHTML (上書き)",
+    code: "<style>\n  .lp-wrapper { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; }\n  .hero { background: linear-gradient(135deg, #4f46e5, #0ea5e9); color: white; padding: 120px 20px; text-align: center; border-radius: 0 0 50px 50px; }\n  .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 10px; color: white; }\n  .hero-sub { font-size: 1.2rem; opacity: 0.9; margin-bottom: 30px; }\n</style>\n\n<div class=\"lp-wrapper\">\n  <section class=\"hero\">\n    <h1 class=\"hero-title\">次世代の学習体験を。</h1>\n    <p class=\"hero-sub\">コードを書きながら、実務のスキルを身につけよう。</p>\n    <a href=\"#pricing\" class=\"btn-primary\">今すぐ始める</a>\n  </section>\n\n  \n  <section class=\"features\">\n    <h2 class=\"section-title\">選ばれる3つの理由</h2>\n    <div class=\"feature-grid\">\n      <div class=\"feature-card\"><h3>🚀 爆速環境</h3><p>ブラウザだけで動く最強の環境</p></div>\n      <div class=\"feature-card\"><h3>💻 実務直結</h3><p>実際の現場と同じワークフロー</p></div>\n      <div class=\"feature-card\"><h3>🔥 楽しい</h3><p>ゲーム感覚でサクサク進める</p></div>\n    </div>\n  </section>\n</div>"
+  },
+  {
+    id: 7,
+    title: "Step 7: 特徴セクション（CSSグリッド）",
+    description: "【全選択して上書き】します。特徴セクションが縦に並んでいてダサいので、CSSの `display: flex;` を使って横並びの美しいカード型デザインに進化させます！",
+    fileName: "カスタムHTML (上書き)",
+    code: "<style>\n  .lp-wrapper { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; }\n  .hero { background: linear-gradient(135deg, #4f46e5, #0ea5e9); color: white; padding: 120px 20px; text-align: center; border-radius: 0 0 50px 50px; }\n  .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 10px; color: white; }\n  .hero-sub { font-size: 1.2rem; opacity: 0.9; margin-bottom: 30px; }\n  /* ★ 追加: Flexboxでカードを横並びにし、ホバーで浮き上がるアニメーションを追加 */\n  .features { padding: 80px 20px; background: #f8fafc; text-align: center; }\n  .section-title { font-size: 2rem; margin-bottom: 40px; color: #1e293b; font-weight: bold; }\n  .feature-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }\n  .feature-card { background: white; padding: 30px; border-radius: 15px; width: 280px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); transition: 0.3s; }\n  .feature-card:hover { transform: translateY(-10px); }\n  .feature-card h3 { color: #4f46e5; margin-bottom: 10px; }\n</style>\n\n<div class=\"lp-wrapper\">\n  <section class=\"hero\">\n    <h1 class=\"hero-title\">次世代の学習体験を。</h1>\n    <p class=\"hero-sub\">コードを書きながら、実務のスキルを身につけよう。</p>\n    <a href=\"#pricing\" class=\"btn-primary\">今すぐ始める</a>\n  </section>\n\n  <section class=\"features\">\n    <h2 class=\"section-title\">選ばれる3つの理由</h2>\n    <div class=\"feature-grid\">\n      <div class=\"feature-card\"><h3>🚀 爆速環境</h3><p>ブラウザだけで動く最強の環境</p></div>\n      <div class=\"feature-card\"><h3>💻 実務直結</h3><p>実際の現場と同じワークフロー</p></div>\n      <div class=\"feature-card\"><h3>🔥 楽しい</h3><p>ゲーム感覚でサクサク進める</p></div>\n    </div>\n  </section>\n</div>"
+  },
+  {
+    id: 8,
+    title: "Step 8: 料金表セクション（HTML＆CSS）",
+    description: "【全選択して上書き】します。LPの核となる「料金表（Pricing）」と、美しいボタンの装飾CSSを追加しました。これで見た目上のHTML/CSSはほぼ完成形になります！",
+    fileName: "カスタムHTML (上書き)",
+    code: "<style>\n  /* CSSはStep 7のまま保持されています */\n  .lp-wrapper { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; }\n  .hero { background: linear-gradient(135deg, #4f46e5, #0ea5e9); color: white; padding: 120px 20px; text-align: center; border-radius: 0 0 50px 50px; }\n  .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 10px; color: white; }\n  .hero-sub { font-size: 1.2rem; opacity: 0.9; margin-bottom: 30px; }\n  .features { padding: 80px 20px; background: #f8fafc; text-align: center; }\n  .section-title { font-size: 2rem; margin-bottom: 40px; color: #1e293b; font-weight: bold; }\n  .feature-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }\n  .feature-card { background: white; padding: 30px; border-radius: 15px; width: 280px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); transition: 0.3s; }\n  .feature-card:hover { transform: translateY(-10px); }\n  .feature-card h3 { color: #4f46e5; margin-bottom: 10px; }\n  \n  /* ★ 追加: 料金表とボタンのデザイン */\n  .pricing { padding: 80px 20px; text-align: center; }\n  .toggle-wrap { margin-bottom: 40px; }\n  .pricing-grid { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; }\n  .price-card { border: 1px solid #e2e8f0; padding: 40px; border-radius: 15px; width: 300px; background: white; }\n  .price-card.premium { border: 2px solid #0ea5e9; box-shadow: 0 20px 25px -5px rgba(14,165,233,0.1); transform: scale(1.05); }\n  .price-display { font-size: 2.5rem; font-weight: 800; color: #0f172a; margin: 20px 0; }\n  .btn-primary { background: white; color: #4f46e5; padding: 15px 35px; border-radius: 30px; text-decoration: none; font-weight: bold; transition: 0.3s; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }\n  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }\n  #planToggle { background: #1e293b; color: white; border: none; padding: 12px 24px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; }\n  #planToggle:hover { background: #334155; transform: scale(1.05); }\n</style>\n\n<div class=\"lp-wrapper\">\n  <section class=\"hero\">\n    <h1 class=\"hero-title\">次世代の学習体験を。</h1>\n    <p class=\"hero-sub\">コードを書きながら、実務のスキルを身につけよう。</p>\n    <a href=\"#pricing\" class=\"btn-primary\">今すぐ始める</a>\n  </section>\n\n  <section class=\"features\">\n    <h2 class=\"section-title\">選ばれる3つの理由</h2>\n    <div class=\"feature-grid\">\n      <div class=\"feature-card\"><h3>🚀 爆速環境</h3><p>ブラウザだけで動く最強の環境</p></div>\n      <div class=\"feature-card\"><h3>💻 実務直結</h3><p>現場と同じワークフロー</p></div>\n      <div class=\"feature-card\"><h3>🔥 楽しい</h3><p>ゲーム感覚で進める</p></div>\n    </div>\n  </section>\n\n  \n  <section id=\"pricing\" class=\"pricing\">\n    <h2 class=\"section-title\">シンプルな料金体系</h2>\n    <div class=\"toggle-wrap\"><button id=\"planToggle\">年額プランに切り替え (20%OFF)</button></div>\n    <div class=\"pricing-grid\">\n      <div class=\"price-card\">\n        <h3>Basic</h3>\n        <div class=\"price-display\" data-monthly=\"¥1,000/月\" data-annual=\"¥9,600/年\">¥1,000/月</div>\n      </div>\n      <div class=\"price-card premium\">\n        <h3>Pro 👑</h3>\n        <div class=\"price-display\" data-monthly=\"¥3,000/月\" data-annual=\"¥28,800/年\">¥3,000/月</div>\n      </div>\n    </div>\n  </section>\n</div>"
+  },
+  {
+    id: 9,
+    title: "Step 9: JavaScriptで魔法をかける",
+    description: "【全選択して上書き】します！これが最後のコード追加です。一番下に `<script>` を追加し、「ボタンを押すと月額・年額のテキストが瞬時に切り替わる」ギミックを仕込みました！",
+    fileName: "カスタムHTML (上書き)",
+    code: "<style>\n  /* CSSはStep 8のまま保持されています */\n  .lp-wrapper { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; }\n  .hero { background: linear-gradient(135deg, #4f46e5, #0ea5e9); color: white; padding: 120px 20px; text-align: center; border-radius: 0 0 50px 50px; }\n  .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 10px; color: white; }\n  .hero-sub { font-size: 1.2rem; opacity: 0.9; margin-bottom: 30px; }\n  .features { padding: 80px 20px; background: #f8fafc; text-align: center; }\n  .section-title { font-size: 2rem; margin-bottom: 40px; color: #1e293b; font-weight: bold; }\n  .feature-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }\n  .feature-card { background: white; padding: 30px; border-radius: 15px; width: 280px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); transition: 0.3s; }\n  .feature-card:hover { transform: translateY(-10px); }\n  .feature-card h3 { color: #4f46e5; margin-bottom: 10px; }\n  .pricing { padding: 80px 20px; text-align: center; }\n  .toggle-wrap { margin-bottom: 40px; }\n  .pricing-grid { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; }\n  .price-card { border: 1px solid #e2e8f0; padding: 40px; border-radius: 15px; width: 300px; background: white; }\n  .price-card.premium { border: 2px solid #0ea5e9; box-shadow: 0 20px 25px -5px rgba(14,165,233,0.1); transform: scale(1.05); }\n  .price-display { font-size: 2.5rem; font-weight: 800; color: #0f172a; margin: 20px 0; }\n  .btn-primary { background: white; color: #4f46e5; padding: 15px 35px; border-radius: 30px; text-decoration: none; font-weight: bold; transition: 0.3s; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }\n  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }\n  #planToggle { background: #1e293b; color: white; border: none; padding: 12px 24px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; }\n  #planToggle:hover { background: #334155; transform: scale(1.05); }\n</style>\n\n<div class=\"lp-wrapper\">\n  <section class=\"hero\">\n    <h1 class=\"hero-title\">次世代の学習体験を。</h1>\n    <p class=\"hero-sub\">コードを書きながら、実務のスキルを身につけよう。</p>\n    <a href=\"#pricing\" class=\"btn-primary\">今すぐ始める</a>\n  </section>\n  <section class=\"features\">\n    <h2 class=\"section-title\">選ばれる3つの理由</h2>\n    <div class=\"feature-grid\">\n      <div class=\"feature-card\"><h3>🚀 爆速環境</h3><p>ブラウザだけで動く最強の環境</p></div>\n      <div class=\"feature-card\"><h3>💻 実務直結</h3><p>現場と同じワークフロー</p></div>\n      <div class=\"feature-card\"><h3>🔥 楽しい</h3><p>ゲーム感覚で進める</p></div>\n    </div>\n  </section>\n  <section id=\"pricing\" class=\"pricing\">\n    <h2 class=\"section-title\">シンプルな料金体系</h2>\n    <div class=\"toggle-wrap\"><button id=\"planToggle\">年額プランに切り替え (20%OFF)</button></div>\n    <div class=\"pricing-grid\">\n      <div class=\"price-card\">\n        <h3>Basic</h3>\n        <div class=\"price-display\" data-monthly=\"¥1,000/月\" data-annual=\"¥9,600/年\">¥1,000/月</div>\n      </div>\n      <div class=\"price-card premium\">\n        <h3>Pro 👑</h3>\n        <div class=\"price-display\" data-monthly=\"¥3,000/月\" data-annual=\"¥28,800/年\">¥3,000/月</div>\n      </div>\n    </div>\n  </section>\n</div>\n\n\n<script>\n  const btn = document.getElementById('planToggle');\n  const prices = document.querySelectorAll('.price-display');\n  let isAnnual = false;\n\n  btn.addEventListener('click', (e) => {\n    e.preventDefault();\n    isAnnual = !isAnnual;\n    btn.innerText = isAnnual ? \"月額プランに戻す\" : \"年額プランに切り替え (20%OFF)\";\n    \n    prices.forEach(p => {\n      p.innerText = isAnnual ? p.dataset.annual : p.dataset.monthly;\n    });\n  });\n</script>"
+  },
+  {
+    id: 10,
+    title: "Step 10: プレビュー＆ついに公開！",
+    description: "お疲れ様でした！！WordPress右上の青い「公開」ボタンを押して、ページを確定させてください。「固定ページを表示」を押すと、標準ブロック（画像）とカスタムコードが完璧に融合した、プロ級のLPが完成しています！",
+    fileName: "確認フェーズ",
+    code: "/* \n🎉 圧倒的成長！大・大・大成功です！！！\n\nたった10回のステップで、\n1. WordPressの標準機能（メディア管理）\n2. HTMLによる構造化\n3. CSSによる高度なデザイン\n4. JSによる動的なUIギミック\n\n現場で求められる「全て」を体験しました。\nこれが本当のWeb制作です！\n*/"
   }
 ];
 
-const THEME_PATH = '/var/www/html/wp-content/themes/playground-theme';
-
 export default function WpTraceLab() {
-  const [currentIdx, setCurrentIdx] = useState<number>(0);
-  
-  const [stageFiles, setStageFiles] = useState<Record<WpFileName, string>>({
-    "index.php": "",
-    "functions.php": "",
-    "sidebar.php": ""
-  });
-  const [selectedFile, setSelectedFile] = useState<WpFileName>('index.php');
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isCopied, setIsCopied] = useState(false);
 
-  const [terminalLog, setTerminalLog] = useState<string>("⏳ WordPress Playground (Wasm) を初期化中...");
-  const [isSuccess, setIsSuccess] = useState<boolean>(false);
-  const [isWpReady, setIsWpReady] = useState<boolean>(false);
-  const [showAnswer, setShowAnswer] = useState<boolean>(false);
+  const lesson = WP_LESSONS[currentStep];
 
-  const stage = WP_STAGES[currentIdx] || WP_STAGES;
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  const sendPlaygroundAction = (action: any) => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(action, '*');
+  // クリップボードにコードをコピーする関数
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(lesson.code);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
     }
   };
 
-  useEffect(() => {
-    if (WP_STAGES[currentIdx]) {
-      setStageFiles(WP_STAGES[currentIdx].files);
-      setSelectedFile(WP_STAGES[currentIdx].activeFile);
-    }
-    setIsSuccess(false);
-    setShowAnswer(false);
-  }, [currentIdx]);
-
-  // 👑 改善コア：ロードイベントではなく、確実な非同期時間差トリガーに変更！
-  useEffect(() => {
-    setIsWpReady(false);
-    setTerminalLog("⚡ WebAssembly 仮想WordPressコンパイラを起動中...");
-
-    // iframeが貼られたら、2秒後にテーマファイルを強制書き込みしてシャッターを開ける！
-    const timer = setTimeout(() => {
-      const currentStage = WP_STAGES[currentIdx] || WP_STAGES;
-
-      // 仮想ディレクトリとBlueprintのインジェクトを実行
-      sendPlaygroundAction({
-        type: 'importBlueprint',
-        blueprint: {
-          landingPage: '/',
-          preferredVersion: { php: '8.1', wp: 'latest' },
-          steps: [
-            { step: 'mkdir', path: THEME_PATH },
-            {
-              step: 'writeFile',
-              path: `${THEME_PATH}/style.css`,
-              data: '/*\nTheme Name: Playground Theme\nAuthor: CodePlayground\nVersion: 1.0\n*/'
-            },
-            { step: 'writeFile', path: `${THEME_PATH}/index.php`, data: currentStage?.files?.['index.php'] || "" },
-            { step: 'writeFile', path: `${THEME_PATH}/functions.php`, data: currentStage?.files?.['functions.php'] || "" },
-            { step: 'writeFile', path: `${THEME_PATH}/sidebar.php`, data: currentStage?.files?.['sidebar.php'] || "" },
-            { step: 'login', username: 'admin', password: 'password' },
-            { step: 'activateTheme', themeId: 'playground-theme' }
-          ]
-        }
-      });
-
-      setIsWpReady(true);
-      setTerminalLog("✨ WordPress Playground 起動成功！写経エディタが同期されました。");
-    }, 2200); // 2.2秒の超安全マージン
-
-    return () => clearTimeout(timer);
-  }, [currentIdx]);
-
-  const handleCodeChange = (newCode: string) => {
-    setStageFiles(prev => ({ ...prev, [selectedFile]: newCode }));
-    if (!isWpReady) return;
-
-    sendPlaygroundAction({
-      type: 'runStep',
-      step: { step: 'writeFile', path: `${THEME_PATH}/${selectedFile}`, data: newCode }
-    });
-    
-    sendPlaygroundAction({
-      type: 'runStep',
-      step: { step: 'goTo', url: '/' }
-    });
-  };
-
-  const handleRunTest = () => {
-    setTerminalLog("⚡ WordPressコアフックおよびテーマの構文木を解析中...");
-    const targetCode = stageFiles[stage.checkFile] || "";
-
-    if (targetCode.includes(stage.expectedKeyword)) {
-      setIsSuccess(true);
-      setTerminalLog(`✨ SUCCESS: [${stage.checkFile}] 内に必須関数 '${stage.expectedKeyword}' を検知！正常にコンパイルされました。`);
-    } else {
-      setTerminalLog(`🚨 Error: 構文チェック失敗。${stage.checkFile} 内に、ミッションの必須キーワードが不足しています。`);
-    }
-  };
+  // 👑 完全日本語化されたシンプルなURL
+  const targetUrl = "https://playground.wordpress.net/?theme=twentytwentyone&language=ja";
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#141414] overflow-hidden text-left relative">
+    <div className="flex flex-col h-screen w-full bg-[#141414] text-white font-sans overflow-hidden">
       
-      {/* 上段：ステージ選択 */}
-      <div className="bg-[#1e1e1e] border-b border-[#3c3c3c] px-3 py-2 flex gap-3 overflow-x-auto shrink-0 w-full scrollbar-hide">
-        <span className="text-[10px] font-bold text-[#858585] uppercase font-mono px-2 shrink-0 flex items-center">WP STEPS:</span>
-        {WP_STAGES.map((s, idx) => (
-          <button
-            key={s.id}
-            onClick={() => setCurrentIdx(idx)}
-            className={`px-4 py-1.5 rounded-lg font-mono text-[11px] border flex items-center gap-2 transition shrink-0 ${
-              currentIdx === idx ? 'bg-[#2d2d2d] text-cyan-400 border-cyan-500 font-bold shadow-lg shadow-black/40' : 'bg-[#141414] text-slate-400 border-transparent hover:bg-[#252526]'
-            }`}
-          >
-            <span className="text-[9px] bg-cyan-950 px-1.5 py-0.5 rounded text-cyan-400 font-black">#0{s.id}</span>
-            <span className="truncate max-w-[200px] font-bold">{s.title.split(":")}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* 中段：複数ファイル切り替え × エディタ × Wasmプレビュー */}
-      <div className="flex-1 flex overflow-hidden w-full border-b border-[#2d2d2d]">
-        
-        {/* 左側半分：エディタ領域 */}
-        <div className="w-1/2 flex flex-col border-r border-[#2d2d2d] h-full bg-[#141414]">
-          <div className="bg-[#1e1e1e] border-b border-[#2d2d2d] flex text-xs shrink-0 select-none justify-between items-center pr-3">
-            <div className="flex">
-              {(['index.php', 'functions.php', 'sidebar.php'] as WpFileName[]).map((fileName) => (
-                <button
-                  key={fileName}
-                  onClick={() => setSelectedFile(fileName)}
-                  className={`px-4 py-2 border-r border-[#2b2b2b] font-mono transition-all text-[11px] flex items-center gap-1.5 ${
-                    selectedFile === fileName 
-                      ? 'bg-[#141414] text-amber-400 border-t-2 border-amber-500 font-bold' 
-                      : 'bg-[#2d2d2d]/40 text-slate-500 hover:bg-[#2d2d2d]'
-                  }`}
-                >
-                  <span>{fileName.endsWith('.php') ? '🐘' : '📄'}</span>
-                  <span>{fileName}</span>
-                  {stage?.checkFile === fileName && <span className="text-[8px] bg-rose-950 text-rose-400 px-1 rounded font-black">TARGET</span>}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowAnswer(!showAnswer)}
-              className="bg-amber-500 hover:bg-amber-400 text-amber-950 font-black px-2.5 py-1 rounded text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
-            >
-              {showAnswer ? '💡 カンペを閉じる' : '💡 正解コードを見る'}
-            </button>
-          </div>
-
-          <textarea
-            value={stageFiles[selectedFile] || ""}
-            onChange={(e) => handleCodeChange(e.target.value)}
-            disabled={!isWpReady}
-            className="flex-1 bg-[#141414] text-[#dcdcaa] font-mono text-[13.5px] outline-none resize-none p-5 leading-relaxed h-full w-full select-text"
-            style={{ lineHeight: '21px' }}
-            spellCheck={false}
-          />
-        </div>
-
-        {/* 右側半分：Wasm プレビュー */}
-        <div className="w-1/2 flex flex-col h-full bg-[#1a1a1a]">
-          <div className="bg-[#1e1e1e] text-cyan-400 font-bold text-[10px] px-3 py-2 border-b border-[#2d2d2d] font-mono flex justify-between items-center">
-            <span>🖥️ LIVE PREVIEW (WP PLAYGROUND WASM)</span>
-            <span className="text-[8px] bg-cyan-950 text-cyan-400 px-1 rounded font-black">AUTOMATIC RE-COMPILE</span>
-          </div>
-          <div className="flex-1 p-2 bg-[#111] flex relative h-full">
-            <iframe
-              ref={iframeRef}
-              src="https://playground.wordpress.net/?embed=1&mode=seamless"
-              className="w-full h-full bg-white rounded-lg shadow-2xl"
-              title="WP Playground Live"
-            />
-            {!isWpReady && (
-              <div className="absolute inset-0 bg-black/80 flex items-center justify-center text-slate-300 text-xs font-mono p-4 text-center">
-                <div className="space-y-2">
-                  <div className="text-cyan-400 font-bold animate-pulse">⚙️ {terminalLog}</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 下段：ターミナル */}
-      <footer className="h-[220px] bg-[#0a0a0a] flex shrink-0 w-full">
-        <div className="w-[380px] p-4 border-r border-[#2d2d2d] bg-[#1e1e1e] text-slate-300 flex flex-col overflow-hidden">
-          <div className="text-rose-400 font-bold text-[10px] uppercase font-mono tracking-wider mb-1">🎯 STAGE MISSION</div>
-          <div className="flex-1 overflow-y-auto text-[12px] leading-relaxed font-bold bg-[#141414] p-3 border border-[#2d2d2d] rounded">
-            {stage?.mission}
-            <div className="mt-2 pt-2 border-t border-[#222] text-[11px] text-amber-400/80 font-normal">
-              💡 ヒント: {stage?.hint}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-left">
-          <div className="text-slate-500 mb-1 border-b border-[#222] pb-1 select-none font-mono">Tauri Virtual WP-Compiler Dashboard</div>
-          <div className={`leading-relaxed whitespace-pre-wrap ${terminalLog.includes('🚨') ? 'text-rose-400 font-bold' : terminalLog.includes('✨') ? 'text-emerald-400 font-bold' : 'text-cyan-300'}`}>
-            {terminalLog}
-          </div>
-        </div>
-
-        <div className="w-[200px] p-4 bg-[#1e1e1e] flex items-center justify-center">
-          <button
-            onClick={handleRunTest}
-            disabled={!isWpReady || isSuccess}
-            className="w-full h-full font-black rounded-xl text-xs uppercase tracking-widest transition-all bg-gradient-to-br from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 active:scale-95 shadow-lg"
-          >
-            {isSuccess ? '✔ SUCCESS' : '▶ RUN TEST'}
-          </button>
-        </div>
-      </footer>
-
-      {/* カンペパネル */}
-      {showAnswer && (
-        <div className="absolute top-[85px] left-4 w-[46%] h-[60%] bg-[#1e1e1e] border-2 border-amber-500 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-40 flex flex-col overflow-hidden">
-          <div className="bg-[#2d2d2d] px-4 py-2 border-b border-[#3c3c3c] flex justify-between items-center select-none shrink-0">
-            <span className="text-xs font-mono font-black text-amber-400 flex items-center gap-1.5">
-              <span>💡</span> {stage?.checkFile} の模範解答コード（写経見本）
-            </span>
-            <button onClick={() => setShowAnswer(false)} className="text-slate-400 hover:text-white text-sm font-bold font-mono px-1.5 cursor-pointer">✕</button>
-          </div>
-          <div className="flex-1 overflow-auto p-4 bg-[#0a0a0a] font-mono text-[12.5px] leading-relaxed text-emerald-400 whitespace-pre select-text selection:bg-slate-800 text-left">
-            <code>{stage?.answerCode}</code>
-          </div>
-        </div>
-      )}
-
-      {/* ミッションクリアモーダル */}
-      {isSuccess && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-          <div className="bg-emerald-950 border-2 border-emerald-500 p-8 rounded-2xl text-center shadow-[0_0_50px_rgba(16,185,129,0.3)] max-w-sm">
-            <div className="text-5xl mb-3 animate-bounce">🐘</div>
-            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300 mb-2">STAGE CLEAR!!</h3>
-            <p className="text-emerald-200 text-xs mb-6 font-bold leading-relaxed">素晴らしいわ、ボス！WordPressコアがコードの安全なインジェクトを確認いたしました！</p>
+      {/* ヘッダー */}
+      <header className="h-14 bg-[#1e1e1e] border-b border-[#3c3c3c] flex items-center justify-between px-6 shrink-0 z-10">
+        <div className="flex items-center gap-4">
+          <span className="font-black text-cyan-400 text-lg tracking-wider">🐘 WP TRACE LAB</span>
+          
+          <div className="flex items-center bg-[#0a0a0a] border border-[#2d2d2d] rounded-xl p-1 gap-1">
             <button 
-              onClick={() => { if(currentIdx < WP_STAGES.length - 1) setCurrentIdx(currentIdx + 1); }} 
-              className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs font-black py-2.5 rounded-full shadow-lg cursor-pointer"
+              onClick={() => setCurrentStep(prev => Math.max(0, prev - 1))}
+              disabled={currentStep === 0}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${currentStep === 0 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white cursor-pointer'}`}
             >
-              {currentIdx < WP_STAGES.length - 1 ? '次のステージへ進む' : '全WordPressステージ完全制覇！'}
+              ◀ 前のステップ
+            </button>
+            <span className="text-xs px-2 text-slate-400 font-mono">Step {currentStep + 1} / {WP_LESSONS.length}</span>
+            <button 
+              onClick={() => setCurrentStep(prev => Math.min(WP_LESSONS.length - 1, prev + 1))}
+              disabled={currentStep === WP_LESSONS.length - 1}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${currentStep === WP_LESSONS.length - 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white cursor-pointer'}`}
+            >
+              次のステップ ▶
             </button>
           </div>
         </div>
-      )}
+      </header>
+
+      {/* メイン（3ペイン） */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* 左：解説書（実務マニュアル） */}
+        <div className="w-1/4 bg-[#1a1a1a] border-r border-[#2d2d2d] p-6 overflow-y-auto flex flex-col">
+          <h2 className="text-lg font-bold text-cyan-400 mb-3">{lesson.title}</h2>
+          <p className="text-sm text-slate-300 leading-relaxed mb-6 whitespace-pre-wrap">{lesson.description}</p>
+          
+          {currentStep >= 3 && currentStep <= 8 && (
+             <div className="bg-[#222] border-l-4 border-amber-500 p-4 rounded-r mt-auto">
+               <span className="block text-[10px] font-bold text-amber-500 mb-1 tracking-wider">💡 アドバイス</span>
+               <p className="text-xs text-slate-400">
+                 コードが長くなってきました！元のコードを残したまま貼り付けるとエラーになるので、「Ctrl+A」で全選択してから「Ctrl+V（貼り付け）」で丸ごと上書きしましょう！
+               </p>
+             </div>
+          )}
+        </div>
+
+        {/* 中央：コード見本 ＆ コピーボタン */}
+        <div className="w-1/3 flex flex-col border-r border-[#2d2d2d] relative group">
+          <div className="bg-[#1e1e1e] text-[10px] text-slate-400 font-bold px-4 py-2 border-b border-[#2d2d2d] uppercase tracking-widest flex justify-between items-center">
+            <span>対象ファイル: {lesson.fileName}</span>
+            
+            <button 
+              onClick={handleCopy}
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isCopied ? 'bg-emerald-600 text-white' : 'bg-[#333] hover:bg-[#444] text-slate-300 cursor-pointer'}`}
+            >
+              {isCopied ? '✓ コピー完了！' : '📋 コードをコピー'}
+            </button>
+          </div>
+          <pre className="flex-1 bg-[#141414] text-[#9cdcfe] font-mono text-xs p-6 overflow-auto select-text leading-relaxed">
+            <code>{lesson.code}</code>
+          </pre>
+        </div>
+
+        {/* 右：安全な別タブ起動パネル */}
+        <div className="w-5/12 bg-[#111] flex flex-col relative">
+          <div className="bg-[#1e1e1e] text-[10px] text-slate-400 font-bold px-4 py-2 border-b border-[#2d2d2d] uppercase tracking-widest">
+            WordPress Sandbox Launcher
+          </div>
+          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1a293b] to-[#111]">
+            <div className="w-20 h-20 bg-[#1e293b] border-2 border-cyan-500/30 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(6,182,212,0.2)]">
+              <span className="text-5xl">🐘</span>
+            </div>
+            
+            <h3 className="text-xl font-bold text-white mb-2">安全・確実なピュア環境</h3>
+            <p className="text-xs text-slate-400 mb-8 max-w-sm leading-relaxed">
+              自動構築を使わず、初期状態のWordPressを立ち上げます。プログラミングは「自分の手で操作する」のが一番の近道です。
+            </p>
+
+            <a 
+              href={targetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative px-8 py-4 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all active:scale-95 overflow-hidden flex items-center justify-center no-underline cursor-pointer"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+              <span className="relative flex items-center gap-2">
+                <span className="text-lg">🚀</span>
+                <span>WP管理画面を開く (日本語)</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
