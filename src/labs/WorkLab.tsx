@@ -11,7 +11,6 @@ interface WorkLabProps {
 }
 
 export default function WorkLab({ onProjectAdded }: WorkLabProps) {
-  // WordPressモードを廃止し、純粋なWebファイルのみを管理
   const [webFiles, setWebFiles] = useState<VirtualFile[]>([
     { name: 'index.html', code: `<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { background: #141414; color: #06b6d4; text-align: center; font-family: sans-serif; padding-top: 50px; }\n  </style>\n</head>\n<body>\n  <h1>🌐 WEB FREE SANDBOX</h1>\n  <p>ここに自由にHTML/CSS/JSを書いて構築できますわ！</p>\n</body>\n</html>` },
     { name: 'style.css', code: `/* 自由なCSSスタイルシート */\nh1 { font-size: 3rem; text-shadow: 0 0 10px rgba(6,182,212,0.5); }` },
@@ -24,14 +23,13 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
   const [saveStatus, setSaveStatus] = useState<string>("");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null); // 👑 PCのファイル選択画面を呼び出すトリガー
   const currentFile = webFiles[activeIdx];
 
-  // 初回マウント時にプレビューを描画
   useEffect(() => {
     renderWebPreview(webFiles);
-  }, []);
+  }, [webFiles]); // webFilesの変更を常に検知してプレビューに反映
 
-  // 👑 HTML/CSS/JS をガッチャンコして iframe にリアルタイム描画する関数
   const renderWebPreview = (filesList: VirtualFile[]) => {
     if (!iframeRef.current) return;
     
@@ -46,29 +44,37 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
   const handleCodeChange = (newCode: string) => {
     const updated = webFiles.map((f, i) => i === activeIdx ? { ...f, code: newCode } : f);
     setWebFiles(updated);
-    renderWebPreview(updated); // 入力するたびに爆速でプレビュー反映
+  };
+
+  // 👑 パソコンから画像が選ばれた瞬間に動く処理
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 画像ファイルをブラウザで表示可能な一時URLに変換
+    const localImageUrl = URL.createObjectURL(file);
+    
+    // 現在選択中のファイルの末尾に<img>タグを自動生成して挿入
+    const imgTag = `\n<img src="${localImageUrl}" alt="${file.name}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0;" />`;
+    
+    const updated = webFiles.map((f, i) => i === activeIdx ? { ...f, code: f.code + imgTag } : f);
+    setWebFiles(updated);
+    
+    // 入力値をリセット（同じ画像を連続で選んでも反応するようにする）
+    e.target.value = '';
   };
 
   const handleCreateFile = () => {
     const trimmed = newFileName.trim();
-    if (!trimmed) return;
-    if (webFiles.some(f => f.name === trimmed)) return;
+    if (!trimmed || webFiles.some(f => f.name === trimmed)) return;
 
-    // 拡張子に合わせて初期コードを変える親切設計
     let initialCode = "\n";
     if (trimmed.endsWith('.css')) initialCode = "/* 新しいスタイル */\n";
     if (trimmed.endsWith('.js')) initialCode = "// 新しいスクリプト\n";
 
-    const newFile: VirtualFile = {
-      name: trimmed,
-      code: initialCode,
-      isCustom: true
-    };
-
-    const updated = [...webFiles, newFile];
+    const updated = [...webFiles, { name: trimmed, code: initialCode, isCustom: true }];
     setWebFiles(updated);
     setActiveIdx(updated.length - 1);
-    renderWebPreview(updated);
     setNewFileName("");
   };
 
@@ -83,7 +89,7 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#141414] overflow-hidden text-left relative">
-      {/* 👑 ヘッダーツールバー */}
+      {/* ヘッダーツールバー */}
       <div className="bg-[#1e1e1e] border-b border-[#3c3c3c] px-6 py-2 flex justify-between items-center shrink-0 w-full z-10">
         <div className="flex items-center gap-4">
           <span className="font-black text-indigo-400 text-lg tracking-wider">🌐 WEB FREE SANDBOX</span>
@@ -123,8 +129,9 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
         </div>
       </div>
 
+      {/* メインエリア */}
       <div className="flex-1 flex overflow-hidden w-full border-b border-[#2d2d2d]">
-        {/* 👑 左側：エディタ領域 */}
+        {/* 左側：エディタエリア */}
         <div className="w-1/2 flex flex-col border-r border-[#2d2d2d] h-full bg-[#141414]">
           <div className="bg-[#1e1e1e] border-b border-[#2d2d2d] flex text-xs shrink-0 overflow-x-auto scrollbar-hide items-center justify-between pr-3">
             <div className="flex">
@@ -150,9 +157,26 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
             style={{ lineHeight: '21px' }} 
             spellCheck={false} 
           />
+
+          {/* 隠し要素：本物のファイル選択フォーム（非表示にして下のボタンと連動させる） */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            accept="image/*" 
+            className="hidden" 
+          />
+
+          {/* 👑 画像追加ボタン（押すと上の隠しinputがトリガーされ、PCのファイル選択画面が開く） */}
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-[#4f46e5] hover:bg-[#4338ca] text-center py-3 cursor-pointer transition-all active:scale-[0.99] shrink-0 border-t border-[#3c3c3c]"
+          >
+            <span className="text-white text-xs font-black tracking-widest">🖼️ 画像を追加（PCから選択）</span>
+          </div>
         </div>
 
-        {/* 👑 右側：ライブプレビュー領域 */}
+        {/* 右側：プレビュー領域 */}
         <div className="w-1/2 flex flex-col h-full bg-[#1a1a1a]">
           <div className="bg-[#1e1e1e] text-indigo-400 font-bold text-[10px] px-4 py-2.5 border-b border-[#2d2d2d] font-mono flex justify-between items-center tracking-widest">
             <span>🖥️ LIVE PREVIEW</span>
@@ -168,10 +192,10 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
         </div>
       </div>
 
-      {/* 👑 フッター */}
+      {/* フッター */}
       <footer className="h-[40px] bg-[#0a0a0a] flex items-center shrink-0 w-full px-4 border-t border-[#222]">
         <div className="font-mono text-[11px] text-indigo-400 font-bold">
-          <span className="animate-pulse mr-2">●</span> READY: HTML/CSS/JS リアルタイムコンパイラが稼働中です。
+          <span className="animate-pulse mr-2">●</span> READY: パソコンからのローカル画像読み込みエンジンが正常に稼働中です。
         </div>
       </footer>
     </div>
