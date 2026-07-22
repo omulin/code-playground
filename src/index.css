@@ -1,3 +1,36 @@
+
+/* 2. その後に Tailwind を読み込む */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 3. 以降はそのまま */
+:root {
+  --vscode-bg: #1e1e1e;
+  --vscode-sidebar: #252526;
+  --vscode-activitybar: #333333;
+  --vscode-statusbar: #007acc;
+  --vscode-text: #cccccc;
+}
+
+.dockview-theme-vs-dark {
+  --dv-bg: var(--vscode-bg);
+  --dv-group-bg: var(--vscode-bg);
+  --dv-tabs-and-actions-container-bg: var(--vscode-sidebar);
+  --dv-active-tab-bg: var(--vscode-bg);
+  --dv-inactive-tab-bg: #2d2d2d;
+  --dv-active-tab-color: #ffffff;
+  --dv-inactive-tab-color: #969696;
+  --dv-tab-divider-color: var(--vscode-sidebar);
+  --dv-drag-over-bg: rgba(83, 89, 93, 0.5);
+  --dv-drag-over-border-color: #007fd4;
+  --dv-border-color: #3c3c3c;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--vscode-bg);
+  color: var(--vscode-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}

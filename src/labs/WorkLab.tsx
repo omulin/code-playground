@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 
 interface VirtualFile {
   name: string;
@@ -12,7 +13,7 @@ interface WorkLabProps {
 
 export default function WorkLab({ onProjectAdded }: WorkLabProps) {
   const [webFiles, setWebFiles] = useState<VirtualFile[]>([
-    { name: 'index.html', code: `<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { background: #141414; color: #06b6d4; text-align: center; font-family: sans-serif; padding-top: 50px; }\n  </style>\n</head>\n<body>\n  <h1>🌐 WEB FREE SANDBOX</h1>\n  <p>ここに自由にHTML/CSS/JSを書いて構築できますわ！</p>\n</body>\n</html>` },
+    { name: 'index.html', code: `<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { background: #141414; color: #06b6d4; text-align: center; font-family: sans-serif; padding-top: 50px; }\n  </style>\n</head>\n<body>\n  <h1>🌐 WEB FREE SANDBOX</h1>\n  <p>ここに自由にHTML/CSS/JSを書いて構築できます！</p>\n</body>\n</html>` },
     { name: 'style.css', code: `/* 自由なCSSスタイルシート */\nh1 { font-size: 3rem; text-shadow: 0 0 10px rgba(6,182,212,0.5); }` },
     { name: 'script.js', code: `// 自由なJavaScriptロジック\nconsole.log("Web Sandbox Ready.");` }
   ]);
@@ -87,6 +88,48 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
     setTimeout(() => setSaveStatus(""), 3000);
   };
 
+  // 💡 エディタの言語をファイル拡張子から自動判定
+  const getEditorLanguage = (filename: string) => {
+    if (filename.endsWith('.js')) return 'javascript';
+    if (filename.endsWith('.css')) return 'css';
+    return 'html';
+  };
+
+  // 💡 HTMLタグを「>」を打った瞬間に自動で閉じる魔法のコード
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editor.onDidChangeModelContent((e: any) => {
+      const currentLang = editor.getModel().getLanguageId();
+      // HTMLファイルの時だけ作動
+      if (currentLang !== 'html') return;
+
+      const changes = e.changes[0];
+      if (changes.text === '>') {
+        const position = editor.getPosition();
+        const textUntilPosition = editor.getModel().getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column
+        });
+        
+        const match = textUntilPosition.match(/<([a-zA-Z0-9\-]+)[^>]*>$/);
+        const voidElements = ['br', 'img', 'input', 'hr', 'meta', 'link'];
+        
+        if (match && !voidElements.includes(match[1])) {
+          const tag = match[1];
+          editor.executeEdits("auto-close", [
+            {
+              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+              text: `</${tag}>`,
+              forceMoveMarkers: true
+            }
+          ]);
+          editor.setPosition(position);
+        }
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-[#141414] overflow-hidden text-left relative">
       {/* ヘッダーツールバー */}
@@ -132,14 +175,14 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
       {/* メインエリア */}
       <div className="flex-1 flex overflow-hidden w-full border-b border-[#2d2d2d]">
         {/* 左側：エディタエリア */}
-        <div className="w-1/2 flex flex-col border-r border-[#2d2d2d] h-full bg-[#141414]">
+        <div className="w-1/2 flex flex-col border-r border-[#2d2d2d] h-full bg-[#1e1e1e]">
           <div className="bg-[#1e1e1e] border-b border-[#2d2d2d] flex text-xs shrink-0 overflow-x-auto scrollbar-hide items-center justify-between pr-3">
             <div className="flex">
               {webFiles.map((file, i) => (
                 <button 
                   key={file.name} 
                   onClick={() => setActiveIdx(i)} 
-                  className={`px-5 py-2.5 border-r border-[#2b2b2b] font-mono transition-all text-[11px] flex items-center gap-2 shrink-0 cursor-pointer ${activeIdx === i ? 'bg-[#141414] text-indigo-400 border-t-2 border-indigo-500 font-bold' : 'bg-[#2d2d2d]/40 text-slate-500 hover:bg-[#2d2d2d]'}`}
+                  className={`px-5 py-2.5 border-r border-[#2b2b2b] font-mono transition-all text-[11px] flex items-center gap-2 shrink-0 cursor-pointer ${activeIdx === i ? 'bg-[#1e1e1e] text-indigo-400 border-t-2 border-indigo-500 font-bold' : 'bg-[#2d2d2d]/40 text-slate-500 hover:bg-[#2d2d2d]'}`}
                 >
                   <span>{file.name.endsWith('.js') ? '💛' : file.name.endsWith('.css') ? '📘' : '🌐'}</span>
                   <span>{file.name}</span>
@@ -150,15 +193,36 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
             {saveStatus && <span className="text-[10px] text-emerald-400 font-mono font-bold animate-pulse shrink-0">{saveStatus}</span>}
           </div>
           
-          <textarea 
-            value={currentFile?.code || ""} 
-            onChange={(e) => handleCodeChange(e.target.value)} 
-            className="flex-1 bg-[#141414] text-[#9cdcfe] font-mono text-[13.5px] outline-none resize-none p-5 leading-relaxed h-full w-full select-text" 
-            style={{ lineHeight: '21px' }} 
-            spellCheck={false} 
-          />
+          {/* 👑 textarea を Monaco Editor に置換！ */}
+          <div className="flex-1 overflow-hidden relative w-full h-full bg-[#1e1e1e]">
+            <Editor
+              height="100%"
+              language={getEditorLanguage(currentFile?.name || '')}
+              theme="vs-dark"
+              value={currentFile?.code || ""}
+              onChange={(value) => handleCodeChange(value || "")}
+              onMount={handleEditorDidMount}
+              options={{
+                fontSize: 14,
+                fontFamily: '"Consolas", "Courier New", monospace',
+                minimap: { enabled: false },
+                wordWrap: 'on',
+                formatOnType: true,
+                formatOnPaste: true,
+                autoClosingBrackets: 'always',
+                autoClosingQuotes: 'always',
+                autoIndent: 'full',
+                tabSize: 2,
+                scrollBeyondLastLine: false,
+                scrollbar: {
+                  verticalScrollbarSize: 10,
+                  horizontalScrollbarSize: 10,
+                }
+              }}
+            />
+          </div>
 
-          {/* 隠し要素：本物のファイル選択フォーム（非表示にして下のボタンと連動させる） */}
+          {/* 隠し要素：本物のファイル選択フォーム */}
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -167,7 +231,7 @@ export default function WorkLab({ onProjectAdded }: WorkLabProps) {
             className="hidden" 
           />
 
-          {/* 👑 画像追加ボタン（押すと上の隠しinputがトリガーされ、PCのファイル選択画面が開く） */}
+          {/* 画像追加ボタン */}
           <div 
             onClick={() => fileInputRef.current?.click()}
             className="bg-[#4f46e5] hover:bg-[#4338ca] text-center py-3 cursor-pointer transition-all active:scale-[0.99] shrink-0 border-t border-[#3c3c3c]"

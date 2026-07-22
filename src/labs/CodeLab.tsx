@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
 
 type LangType = 'js' | 'python' | 'php' | 'html';
 
@@ -74,9 +75,6 @@ export default function CodeLab() {
     setIsSuccess(false);
   }, [currentIdx, stage.initialCode, lang]);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const lineNumbersRef = useRef<HTMLDivElement>(null);
-
   const handleRunDebug = () => {
     setIsRunning(true);
     setTerminalLog(`⚡ Compiling via ${lang.toUpperCase()} Virtual Backend...`);
@@ -90,7 +88,6 @@ export default function CodeLab() {
         setTerminalLog(`🚨 Compile Error: ${e.message}`);
         setIsSuccess(false);
       }
-      // 👑 1枚目のスクショのエラーをここで修正！「setIsRunning(false)」に直しました！
       setIsRunning(false);
     }, 600);
   };
@@ -104,23 +101,50 @@ export default function CodeLab() {
     }
   };
 
-  const getLineNumbers = (text: string) => {
-    const lines = text.split('\n').length;
-    return Array.from({ length: Math.max(lines, 12) }, (_, i) => i + 1);
+  // 💡 WorkLabで成功した魔法のコードを合体！（HTMLとPHPの時だけ作動するように安全装置付き）
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editor.onDidChangeModelContent((e: any) => {
+      // 現在の言語を取得
+      const currentLang = editor.getModel().getLanguageId();
+      // HTMLとPHPのステージ以外はタグ補完を動かさない（JSやPythonの計算式で誤爆するのを防ぐため）
+      if (currentLang !== 'html' && currentLang !== 'php') return;
+
+      const changes = e.changes[0];
+      
+      if (changes.text === '>') {
+        const position = editor.getPosition();
+        const textUntilPosition = editor.getModel().getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column
+        });
+        
+        const match = textUntilPosition.match(/<([a-zA-Z0-9\-]+)[^>]*>$/);
+        const voidElements = ['br', 'img', 'input', 'hr', 'meta', 'link'];
+        
+        if (match && !voidElements.includes(match[1])) {
+          const tag = match[1];
+          editor.executeEdits("auto-close", [
+            {
+              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+              text: `</${tag}>`,
+              forceMoveMarkers: true
+            }
+          ]);
+          editor.setPosition(position);
+        }
+      }
+    });
   };
 
-  const handleScroll = () => {
-    if (textareaRef.current && lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
-    }
-  };
-
-  const editorColor = lang === 'js' ? '#dcdcaa' : lang === 'python' ? '#9cdcfe' : lang === 'php' ? '#c586c0' : '#ea580c';
-  // 👑 2枚目のスクショのエラーをここで修正！末尾を「:」に変更して三項演算子を正しく繋げました！
+  // Monaco Editor用に言語フォーマットをマッピング (js -> javascript)
+  const editorLang = lang === 'js' ? 'javascript' : lang;
+  
   const langBadgeColor = lang === 'js' ? 'bg-[#fbbf24] text-amber-950' : lang === 'python' ? 'bg-[#38bdf8] text-sky-950' : lang === 'php' ? 'bg-[#c084fc] text-fuchsia-950' : 'bg-[#ea580c] text-orange-50';
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#141414] overflow-hidden select-none font-sans text-left">
+    <div className="flex flex-col h-full w-full bg-[#1e1e1e] overflow-hidden select-none font-sans text-left">
       
       {/* 🌐 最上部ヘッダー */}
       <header className="bg-[#252526] border-b border-[#3c3c3c] px-4 py-2 flex justify-between items-center shrink-0 w-full z-10 shadow-md">
@@ -157,7 +181,7 @@ export default function CodeLab() {
       <div className="flex-1 flex overflow-hidden w-full relative border-b border-[#2d2d2d]">
         
         {/* 左側（メイン）：エディタ領域 */}
-        <main className="flex-1 flex flex-col bg-[#141414] relative overflow-hidden h-full">
+        <main className="flex-1 flex flex-col bg-[#1e1e1e] relative overflow-hidden h-full">
           <div className="bg-[#2d2d2d] text-slate-300 text-[11px] font-bold py-2 px-4 border-b border-[#3c3c3c] shrink-0 font-mono flex justify-between items-center">
             <span>STAGE {stage.id}: {stage.title}</span>
             <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${langBadgeColor}`}>
@@ -165,18 +189,32 @@ export default function CodeLab() {
             </span>
           </div>
           
-          <div className="flex-1 flex overflow-hidden relative">
-            <div ref={lineNumbersRef} className="w-12 bg-[#1e1e1e] text-[#5a5a5a] font-mono text-[12px] text-right pr-3 py-4 border-r border-[#2d2d2d] overflow-hidden leading-relaxed shrink-0 select-none">
-              {getLineNumbers(code).map(num => <div key={num} className="h-[21px]">{num}</div>)}
-            </div>
-            <textarea
-              ref={textareaRef}
+          <div className="flex-1 overflow-hidden relative w-full h-full">
+            <Editor
+              height="100%"
+              language={editorLang}
+              theme="vs-dark"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onScroll={handleScroll}
-              className="flex-1 bg-transparent font-mono text-[14px] outline-none resize-none p-4 leading-relaxed text-left overflow-y-auto whitespace-pre h-full w-full"
-              style={{ color: editorColor, caretColor: '#fff', lineHeight: '21px' }}
-              spellCheck={false}
+              onChange={(value) => setCode(value || "")}
+              onMount={handleEditorDidMount} // 👈 魔法のコードをマウント！
+              options={{
+                fontSize: 14,
+                fontFamily: '"Consolas", "Courier New", monospace',
+                minimap: { enabled: false },
+                wordWrap: 'on',
+                formatOnType: true,
+                formatOnPaste: true,
+                // autoClosingTags: true (型エラーになるので外しました。自作スクリプトでカバー済みです)
+                autoClosingBrackets: 'always',
+                autoClosingQuotes: 'always',
+                autoIndent: 'full',
+                tabSize: 2,
+                scrollBeyondLastLine: false,
+                scrollbar: {
+                  verticalScrollbarSize: 10,
+                  horizontalScrollbarSize: 10,
+                }
+              }}
             />
           </div>
 
@@ -217,9 +255,9 @@ export default function CodeLab() {
       </div>
 
       {/* 👑 【下段】：ガチターミナル ＆ 実行ボタンエリア */}
-      <footer className="h-[220px] bg-[#0a0a0a] border-t border-[#3c3c3c] flex overflow-hidden shrink-0 w-full">
+      <footer className="h-[220px] bg-[#1e1e1e] border-t border-[#3c3c3c] flex overflow-hidden shrink-0 w-full">
         {/* 左側：リアルターミナルログ */}
-        <div className="flex-1 p-4 overflow-y-auto font-mono text-[12px] flex flex-col gap-1 border-r border-[#2d2d2d] text-left">
+        <div className="flex-1 p-4 overflow-y-auto font-mono text-[12px] flex flex-col gap-1 border-r border-[#3c3c3c] text-left bg-[#141414]">
           <div className="text-slate-500 mb-1 border-b border-[#222] pb-1 select-none">CodePlayground Console v2.5 - Output Log</div>
           <div className={`leading-relaxed whitespace-pre-wrap ${
             terminalLog.includes('🚨') ? 'text-rose-400 font-bold' : 
@@ -231,7 +269,7 @@ export default function CodeLab() {
         </div>
 
         {/* 右側：デバッグ実行ボタン専用パネル */}
-        <div className="w-[240px] bg-[#1e1e1e] p-4 flex items-center justify-center shrink-0">
+        <div className="w-[240px] bg-[#1e1e1e] p-4 flex items-center justify-center shrink-0 border-l border-[#3c3c3c]">
           <button 
             onClick={handleRunDebug} 
             disabled={isRunning || isSuccess} 

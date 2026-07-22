@@ -1,200 +1,118 @@
-import { useState } from 'react';
-import DesignLab from './labs/DesignLab';
-import VisualLab from './labs/VisualLab';
+import React, { useState } from 'react';
+import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview-react';
+import 'dockview-react/dist/styles/dockview.css';
+import { HelpCircle, Code2, GitCommit, Eye, Settings, FileCode, MonitorPlay, Target, BookOpen, Briefcase, Layout } from 'lucide-react';
+
+// すべてのLabをインポート（※ CodeLab だけ前回 export default に変更した場合は {} を外しています）
+import  QuizLab  from './labs/QuizLab';
 import CodeLab from './labs/CodeLab';
-import QuizLab from './labs/QuizLab';
-import MissionLab from './labs/MissionLab';
-import WorkLab from './labs/WorkLab';
-import ProjectLab from './labs/ProjectLab';
-import TraceLab from './labs/TraceLab';
-import WpTraceLab from './labs/WpTraceLab';
-import LearningLab from './labs/LearningLab'; // 🎓 新設したProGATE風ラボをインポート！
+import  TraceLab  from './labs/TraceLab';
+import  VisualLab  from './labs/VisualLab';
+import  DesignLab  from './labs/DesignLab';
+import  LearningLab  from './labs/LearningLab';
+import  MissionLab  from './labs/MissionLab';
+import  ProjectLab  from './labs/ProjectLab';
+import  WorkLab  from './labs/WorkLab';
+import  WpPlaygroundLab  from './labs/WpPlaygroundLab';
+import  WpTraceLab  from './labs/WpTraceLab';
 
-// 🎓 モード型に 'learn' を追加！
-type Mode = 'top' | 'design' | 'visual' | 'code' | 'quiz' | 'mission' | 'work' | 'project' | 'trace' | 'wptrace' | 'learn';
-
-interface ProjectItem {
-  name: string;
-  code: string;
-}
+// パネルに表示するコンポーネントを全登録
+const components = {
+  quiz: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><QuizLab /></div>,
+  code: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><CodeLab /></div>,
+  trace: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><TraceLab /></div>,
+  visual: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><VisualLab /></div>,
+  design: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><DesignLab /></div>,
+  learning: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><LearningLab /></div>,
+  mission: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><MissionLab /></div>,
+  project: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><ProjectLab /></div>,
+  work: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WorkLab /></div>,
+  wpPlayground: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WpPlaygroundLab /></div>,
+  wpTrace: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WpTraceLab /></div>,
+};
 
 export default function App() {
-  const [mode, setMode] = useState<Mode>('top');
-  
-  const [projects, setProjects] = useState<ProjectItem[]>([
-    {
-      name: 'Welcome_Site.html',
-      code: `<div style="padding:20px; background:#1e1e1e; border:1px solid #3c3c3c; border-radius:4px; text-align:center; color:#4fc1ff; font-family:monospace;">console.log("Welcome to CodePlayground!");</div>`
-    }
-  ]);
+  const [api, setApi] = useState<DockviewReadyEvent['api']>();
+  const [activeMenu, setActiveMenu] = useState('explorer');
 
-  const addProject = (projectName: string, htmlContent: string) => {
-    setProjects((prev) => [...prev, { name: projectName, code: htmlContent }]);
+  const onReady = (event: DockviewReadyEvent) => {
+    setApi(event.api);
+    // 初期表示するタブ
+    event.api.addPanel({ id: 'code_panel', component: 'code', title: 'CodeLab.tsx' });
   };
 
+  const openFile = (id: string, component: string, title: string) => {
+    if (!api) return;
+    const existingPanel = api.getPanel(id);
+    if (existingPanel) {
+      existingPanel.api.setActive();
+      return;
+    }
+    api.addPanel({ id, component, title });
+  };
+
+  // サイドバーのメニュー項目のコンポーネント化（コードをスッキリさせるため）
+  const SidebarItem = ({ id, comp, title, Icon, color }: { id: string, comp: string, title: string, Icon: any, color: string }) => (
+    <div 
+      className="px-4 py-1.5 cursor-pointer flex items-center gap-2 hover:bg-[#2a2d2e] transition-colors" 
+      onClick={() => openFile(id, comp, title)}
+    >
+      <Icon size={16} className={color} />
+      <span className="truncate">{title}</span>
+    </div>
+  );
+
   return (
-    <div className="w-full h-screen bg-[#1e1e1e] text-[#d4d4d4] font-mono flex flex-col select-none m-0 p-0 overflow-hidden">
-      
-      {/* 💻 最上部：VS Code風 タイトルバー */}
-      <header className="bg-[#3c3c3c] text-[#a6a6a6] text-xs px-4 py-1.5 flex justify-between items-center border-b border-[#2b2b2b] shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-cyan-400 font-bold">🔵</span>
-          <span>CodePlayground - Visual Studio Code風モード</span>
-        </div>
-        <div className="text-[11px] text-[#808080]">App.tsx - workspace</div>
-        <div className="flex gap-3 text-[11px]">
-          <span>ファイル(F)</span><span>編集(E)</span><span>選択(S)</span>
-        </div>
-      </header>
-
-      {/* 🗂️ メインレイアウト */}
-      <div className="flex-1 flex overflow-hidden w-full">
+    <div className="flex flex-col h-screen w-screen overflow-hidden text-[#cccccc] bg-[#1e1e1e]">
+      <div className="flex flex-1 overflow-hidden">
         
-        {/* 🎛️ 左端：アクティビティバー */}
-        <aside className="w-12 bg-[#333333] border-r border-[#2b2b2b] flex flex-col items-center py-4 gap-6 text-xl text-[#858585] shrink-0">
-          <button onClick={() => setMode('top')} className={`hover:text-white transition ${mode === 'top' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📁</button>
-          
-          {/* 🎓 学習ラボを追加！ */}
-          <button onClick={() => setMode('learn')} className={`hover:text-white transition ${mode === 'learn' ? 'text-indigo-400 border-l-2 border-indigo-400 w-full font-bold' : ''}`}>🎓</button>
-          
-          <button onClick={() => setMode('mission')} className={`hover:text-white transition ${mode === 'mission' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>📝</button>
-          <button onClick={() => setMode('trace')} className={`hover:text-white transition ${mode === 'trace' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>✍️</button>
-          <button onClick={() => setMode('wptrace')} className={`hover:text-white transition ${mode === 'wptrace' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full font-bold' : ''}`}>🐘</button>
-          <button onClick={() => setMode('work')} className={`hover:text-white transition ${mode === 'work' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>💼</button>
-          <button onClick={() => setMode('visual')} className={`hover:text-white transition ${mode === 'visual' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>👁️</button>
-          <button onClick={() => setMode('design')} className={`hover:text-white transition ${mode === 'design' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>🎨</button>
-          <button onClick={() => setMode('code')} className={`hover:text-white transition ${mode === 'code' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>💻</button>
-          <button onClick={() => setMode('quiz')} className={`hover:text-white transition ${mode === 'quiz' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>❓</button>
-          <button onClick={() => setMode('project')} className={`hover:text-white transition ${mode === 'project' ? 'text-cyan-400 border-l-2 border-cyan-400 w-full' : ''}`}>🚀</button>
-        </aside>
+        {/* 左端: アクティビティバー */}
+        <div className="w-12 bg-[#333333] flex flex-col items-center py-2 gap-4 border-r border-[#3c3c3c] flex-shrink-0 select-none">
+          <button 
+            className={`p-2 rounded hover:bg-[#444444] ${activeMenu === 'explorer' ? 'text-white border-l-2 border-[#007acc] bg-[#2a2d2e]' : 'text-[#858585]'}`}
+            onClick={() => setActiveMenu('explorer')}
+          >
+            <Eye size={22} />
+          </button>
+          <div className="flex-1"></div>
+          <button className="p-2 text-[#858585] hover:text-white rounded hover:bg-[#444444]">
+            <Settings size={22} />
+          </button>
+        </div>
 
-        {/* 📂 左サイドバー：ファイルエクスプローラー */}
-        <nav className="w-60 bg-[#252526] border-r border-[#2b2b2b] p-4 hidden md:flex flex-col text-left text-xs text-[#cccccc] shrink-0">
-          <div className="font-bold text-[10px] text-[#858585] uppercase tracking-wider mb-3">エクスプローラー</div>
-          <div className="space-y-1">
-            <div className="text-[#858585] font-bold">▼ src / labs</div>
-            <button onClick={() => setMode('top')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'top' ? 'bg-[#37373d] text-white font-bold' : ''}`}>🏠 Welcome.md</button>
-            
-            {/* 🎓 学習ラボをエクスプローラーに追加！ */}
-            <button onClick={() => setMode('learn')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'learn' ? 'bg-[#37373d] text-indigo-400 font-bold border-l-2 border-indigo-500' : ''}`}>🎓 LearningLab.tsx</button>
-            
-            <button onClick={() => setMode('mission')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'mission' ? 'bg-[#37373d] text-amber-400 font-bold border-l-2 border-amber-500' : ''}`}>📝 MissionLab.json</button>
-            <button onClick={() => setMode('trace')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'trace' ? 'bg-[#37373d] text-orange-400 font-bold border-l-2 border-orange-500' : ''}`}>✍️ TraceLab.tsx</button>
-            <button onClick={() => setMode('wptrace')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'wptrace' ? 'bg-[#37373d] text-cyan-400 font-bold border-l-2 border-cyan-500' : ''}`}>🐘 WpTraceLab.json</button>
-            <button onClick={() => setMode('work')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'work' ? 'bg-[#37373d] text-emerald-400 font-bold border-l-2 border-emerald-500' : ''}`}>💼 WorkLab.tsx</button>
-            <button onClick={() => setMode('visual')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'visual' ? 'bg-[#37373d] text-white' : ''}`}>👁️ VisualLab.tsx</button>
-            <button onClick={() => setMode('design')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'design' ? 'bg-[#37373d] text-white' : ''}`}>🎨 DesignLab.tsx</button>
-            <button onClick={() => setMode('code')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'code' ? 'bg-[#37373d] text-white' : ''}`}>💻 CodeLab.js</button>
-            <button onClick={() => setMode('quiz')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'quiz' ? 'bg-[#37373d] text-white' : ''}`}>❓ QuizLab.json</button>
-            <button onClick={() => setMode('project')} className={`w-full text-left px-4 py-1.5 rounded hover:bg-[#37373d] block transition ${mode === 'project' ? 'bg-[#37373d] text-white' : ''}`}>🚀 ProjectLab.html</button>
-          </div>
-        </nav>
-
-        {/* 📄 右側：メインコンテンツ表示エリア */}
-        {/* 🎓 learn の時も全画面レイアウトにするために条件を追加 */}
-        <main className={`flex-1 flex flex-col bg-[#1e1e1e] w-full ${mode === 'trace' || mode === 'wptrace' || mode === 'learn' ? 'p-0 overflow-hidden' : 'overflow-y-auto'}`}>
-          
-          {/* 上部タブバーの制御 */}
-          {mode !== 'trace' && mode !== 'wptrace' && mode !== 'learn' && (
-            <div className="bg-[#2d2d2d] flex border-b border-[#2b2b2b] text-xs shrink-0">
-              <div className="bg-[#1e1e1e] text-white px-4 py-2 border-t-2 border-cyan-400">
-                {mode === 'top' ? 'Welcome.md' : `${mode.toUpperCase()}LAB.tsx`}
-              </div>
+        {/* サイドバー: エクスプローラー */}
+        {activeMenu === 'explorer' && (
+          <div className="w-56 bg-[#252526] border-r border-[#3c3c3c] flex flex-col flex-shrink-0 select-none">
+            <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#bbbbbb] border-b border-[#3c3c3c]">
+              Explorer
             </div>
-          )}
-
-          <div className={`w-full mx-auto flex-1 flex flex-col ${mode === 'trace' || mode === 'wptrace' || mode === 'learn' ? 'max-w-none p-0 h-full overflow-hidden' : 'p-8 max-w-5xl overflow-y-auto'}`}>
-            
-            {/* 🏠 TOP MENU */}
-            {mode === 'top' && (
-              <div className="text-left space-y-8">
-                <div>
-                  <h2 className="text-3xl font-light text-white mb-2">Visual Studio Code <span className="text-[#858585] font-light">Mode</span></h2>
-                  <p className="text-[#717171] text-sm font-mono">ゲーム感覚でIT技術を学び、ゼロから自由にモノづくりができる特別ワークスペース。</p>
-                </div>
-                
-                <hr className="border-[#2b2b2b]" />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">▼ Mainクリエイティブ</h3>
-                    <div className="space-y-2">
-                      
-                      {/* 🎓 TOP画面に LearningLab 起動ボタンを追加 */}
-                      <button onClick={() => setMode('learn')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-indigo-500/30 bg-indigo-950/5 rounded group transition">
-                        <div className="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition">🎓 Learning Lab (ステップアップ学習コース)</div>
-                        <div className="text-[11px] text-[#858585] mt-1">ProGATE風のステップ・バイ・ステップ形式で、HTML/CSSの基礎から実践まで手を動かして学ぶ。</div>
-                      </button>
-
-                      <button onClick={() => setMode('mission')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
-                        <div className="text-xs font-bold text-amber-400 group-hover:text-amber-300 transition">📝 Mission Lab (全20ステージの修行)</div>
-                        <div className="text-[11px] text-[#858585] mt-1">解説と答えを確認しながら、お題に沿ってHP制作・WPテーマ開発の基本をマスターする。</div>
-                      </button>
-                      
-                      <button onClick={() => setMode('trace')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
-                        <div className="text-xs font-bold text-orange-400 group-hover:text-orange-300 transition">✍️ Trace Lab (WEBフロント見本写経)</div>
-                        <div className="text-[11px] text-[#858585] mt-1">実務レベルのHTML/CSS/JSコードを完コピ写経！複数ページ遷移を体験。</div>
-                      </button>
-
-                      <button onClick={() => setMode('wptrace')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-cyan-500/30 bg-cyan-950/5 rounded group transition">
-                        <div className="text-xs font-bold text-cyan-400 group-hover:text-cyan-300 transition">🐘 WpTrace Lab (WordPressテーマ動的写経)</div>
-                        <div className="text-[11px] text-[#858585] mt-1">Wasm駆動のリアルWordPress！indexやfunctionsを行き来してテーマを一から写経構築！</div>
-                      </button>
-
-                      <button onClick={() => setMode('work')} className="w-full text-left p-4 bg-[#252526] hover:bg-[#2d2d2d] border border-[#3c3c3c] rounded group transition">
-                        <div className="text-xs font-bold text-emerald-400 group-hover:text-emerald-300 transition">💼 Work Lab (完全自由な一から制作スペース)</div>
-                        <div className="text-[11px] text-[#858585] mt-1">縛りは一切なし。真っ白なエディタから、あなたの好きなサイトやブログを1から自由に創り上げる空間。</div>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-[#858585] uppercase tracking-wider">▼ Basicトレーニング</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {[
-                        { id: 'visual', title: '👁️ Visual Lab', desc: 'レイアウトを学ぶ' },
-                        { id: 'design', title: '🎨 Design Lab', desc: 'CSSコード化する' },
-                        { id: 'code', title: '💻 Code Lab', desc: 'バグを見つけて修正する' },
-                        { id: 'quiz', title: '❓ Quiz Lab', desc: 'ITの必須基礎知識クイズ' }
-                      ].map((btn) => (
-                        <button key={btn.id} onClick={() => setMode(btn.id as Mode)} className="text-left p-3 bg-[#252526]/60 hover:bg-[#2d2d2d] border border-[#2b2b2b] rounded group transition">
-                          <div className="text-xs font-bold text-[#cccccc] group-hover:text-cyan-400 transition">{btn.title}</div>
-                          <div className="text-[10px] text-[#717171] mt-1 leading-relaxed">{btn.desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                    
-                    <button onClick={() => setMode('project')} className="w-full text-left p-2.5 bg-[#252526]/30 hover:bg-[#2d2d2d] border border-[#2b2b2b] rounded text-[11px] text-slate-400 hover:text-white transition flex justify-between items-center">
-                      <span>🚀 制作した実績ポートフォリオ（Project Lab）を見る</span>
-                      <span>→</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 各ラボコンポーネントの呼び出し */}
-            {mode === 'design' && <DesignLab />}
-            {mode === 'visual' && <VisualLab />}
-            {mode === 'code' && <CodeLab />}
-            {mode === 'quiz' && <QuizLab />}
-            {mode === 'trace' && <TraceLab />}
-            {mode === 'wptrace' && <WpTraceLab />}
-            {mode === 'mission' && <MissionLab onProjectAdded={addProject} />}
-            {mode === 'work' && <WorkLab onProjectAdded={addProject} />}
-            {mode === 'project' && <ProjectLab projects={projects} />}
-            {mode === 'learn' && <LearningLab />} {/* 🎓 新設した LearningLab を呼び出し！ */}
-
+            <div className="flex-1 py-2 text-sm overflow-y-auto">
+              <SidebarItem id="code_panel" comp="code" title="CodeLab.tsx" Icon={Code2} color="text-[#4ec9b0]" />
+              <SidebarItem id="quiz_panel" comp="quiz" title="QuizLab.tsx" Icon={HelpCircle} color="text-[#569cd6]" />
+              <SidebarItem id="trace_panel" comp="trace" title="TraceLab.tsx" Icon={GitCommit} color="text-[#ce9178]" />
+              <SidebarItem id="visual_panel" comp="visual" title="VisualLab.tsx" Icon={Eye} color="text-[#dcdcaa]" />
+              <SidebarItem id="design_panel" comp="design" title="DesignLab.tsx" Icon={Layout} color="text-[#c586c0]" />
+              <SidebarItem id="learning_panel" comp="learning" title="LearningLab.tsx" Icon={BookOpen} color="text-[#4fc1ff]" />
+              <SidebarItem id="mission_panel" comp="mission" title="MissionLab.tsx" Icon={Target} color="text-[#f48771]" />
+              <SidebarItem id="project_panel" comp="project" title="ProjectLab.tsx" Icon={Briefcase} color="text-[#d7ba7d]" />
+              <SidebarItem id="work_panel" comp="work" title="WorkLab.tsx" Icon={MonitorPlay} color="text-[#9cdcfe]" />
+              <SidebarItem id="wp_playground_panel" comp="wpPlayground" title="WpPlaygroundLab.tsx" Icon={FileCode} color="text-[#4ec9b0]" />
+              <SidebarItem id="wp_trace_panel" comp="wpTrace" title="WpTraceLab.tsx" Icon={GitCommit} color="text-[#ce9178]" />
+            </div>
           </div>
-        </main>
+        )}
+
+        {/* メイン画面: Dockview */}
+        <div className="flex-1 bg-[#1e1e1e]">
+          <DockviewReact components={components} onReady={onReady} className="dockview-theme-vs-dark" />
+        </div>
       </div>
 
-      {/* 📋 最下部：ステータスバー */}
-      <footer className="bg-[#007acc] text-white text-[11px] px-4 py-1 flex justify-between items-center font-sans shrink-0">
-        <div>✓ CodePlayground Workspace Connected (Tauri)</div>
-        <div>TypeScript JSX</div>
-      </footer>
-
+      {/* 下部: ステータスバー */}
+      <div className="h-6 bg-[#007acc] text-white text-xs px-3 flex items-center justify-between select-none flex-shrink-0">
+        <div className="flex items-center gap-4"><span>Code Playground</span></div>
+        <div className="flex items-center gap-4"><span>React</span><span>Dockview</span></div>
+      </div>
     </div>
   );
 }

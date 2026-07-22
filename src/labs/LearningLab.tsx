@@ -1,591 +1,473 @@
 import { useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 
 interface LearningStep {
   step: number;
   title: string;
-  category: 'HTML' | 'CSS' | 'JavaScript' | 'DevTools & Git' | 'Modern Dev';
+  category: 'HTML' | 'CSS' | 'JavaScript';
   description: string;
-  htmlSample: string;
-  cssSample: string;
-  checkpoint: string;
+  behaviorNote: string; // 💡 タグの動き・仕組み解説
+  codeAnswer: string;   // 👑 コードの正解例
+  targetFile: 'html' | 'css' | 'js';
   targetKeyword: string;
-  targetFile: 'html' | 'css';
+  checkpoint: string;
 }
 
-// 👑 フロントエンド・マスターロードマップ（1〜30 完全版データ）
+// 👑 動きの解説と正解コード付き・白紙からビルドする全20ステップのマスターコース！
 const LEARNING_STEPS: LearningStep[] = [
-  // --- 前半戦（1〜15）のデータ構造を維持 ---
+  // --- HTML (1-6) ---
   {
     step: 1,
-    title: "HTMLの基本構造とDOCTYPE宣言",
+    title: "STEP 1: DOCTYPE宣言を書く",
     category: "HTML",
-    description: "すべてのWebページの土台となるコードです。1行目にDOCTYPE宣言を書き、<html>タグで全体を囲みましょう。",
-    htmlSample: `<!DOCTYPE html>\n<html>\n<head>\n  <title>My First Page</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
-    cssSample: `/* まだCSSは使いません */`,
-    checkpoint: "HTMLエディタに `<!DOCTYPE html>` を含む構造を入力して「判定」を押してください。",
-    targetKeyword: "<!DOCTYPE html>",
-    targetFile: 'html'
+    description: "Webページを作る際は、必ず1行目に文書型定義である DOCTYPE 宣言を書き、HTML文書であることをブラウザに伝えます。",
+    behaviorNote: "ブラウザに対して「このファイルは最新のHTML5で書かれていますよ」と伝えるための最も最初の合図として機能します。",
+    codeAnswer: "<!DOCTYPE html>",
+    targetFile: 'html',
+    targetKeyword: '<!DOCTYPE html>',
+    checkpoint: "index.html に `<!DOCTYPE html>` を記述してください。"
   },
   {
     step: 2,
-    title: "セマンティックなマークアップ（見出しと段落）",
+    title: "STEP 2: 基本構造（html・head・body）を作る",
     category: "HTML",
-    description: "テキストの意味に合わせた正しいタグ選びを学びます。見出しには <h1>〜<h6>、段落には <p> を使用します。",
-    htmlSample: `<h1>主要な大見出し</h1>\n<p>ここには詳細な説明文章を記述します。</p>`,
-    cssSample: `/* まだCSSは使いません */`,
-    checkpoint: "HTMLエディタで、段落を表す `<p>` タグを使って文章を記述してみましょう。",
-    targetKeyword: "<p>",
-    targetFile: 'html'
+    description: "HTMLの骨組みとなるタグを組み立てます。<html>で全体を囲み、ページの裏側設定をする<head>と、目に見える部分を作る<body>を配置します。",
+    behaviorNote: "<html>は全体の根っこ、<head>はページのタイトルやCSSの読み込み設定、<body>は画面に実際に映し出される領域になります。",
+    codeAnswer: "<html>\n<head>\n  <title>タイトル</title>\n</head>\n<body>\n  \n</body>\n</html>",
+    targetFile: 'html',
+    targetKeyword: '<body>',
+    checkpoint: "index.html に `<html>`、`<head>`、`<body>` タグを組み立ててください。"
   },
   {
     step: 3,
-    title: "リンクの配置 (aタグ)",
+    title: "STEP 3: 看板見出し（<h1>）を置く",
     category: "HTML",
-    description: "ページ移動を行うハイパーリンク（aタグ）です。href属性に行き先のURLを指定します。",
-    htmlSample: `<a href="https://google.com">Googleへジャンプ</a>`,
-    cssSample: `/* まだCSSは使いません */`,
-    checkpoint: "HTMLエディタにリンクを作成するために `href=` 属性を記述してください。",
-    targetKeyword: "href=",
-    targetFile: 'html'
+    description: "<body>の中に、ページのメインタイトルとなる見出しタグ（<h1>）を配置して文字を表示させます。",
+    behaviorNote: "<h1>はページ内で最も重要で大きな見出しとしてブラウザに認識され、検索エンジンやユーザーに「ここがこのページの主題です」と伝えます。",
+    codeAnswer: "<h1>My Portfolio</h1>",
+    targetFile: 'html',
+    targetKeyword: '<h1>',
+    checkpoint: "<body>の中に `<h1>` タグを使ってタイトルを記述してください。"
   },
   {
     step: 4,
-    title: "箇条書きリストの構築 (ul・li)",
+    title: "STEP 4: 紹介文の段落（<p>）を追加する",
     category: "HTML",
-    description: "順序のない箇条書きは <ul> タグを使い、中身の項目は <li> タグで配置します。",
-    htmlSample: `<ul>\n  <li>リンゴ</li>\n  <li>バナナ</li>\n</ul>`,
-    cssSample: `/* まだCSSは使いません */`,
-    checkpoint: "HTMLエディタに箇条書きのリストを作るために `<ul>` タグを入力してください。",
-    targetKeyword: "<ul>",
-    targetFile: 'html'
+    description: "見出しの下に、説明文やプロフィール文を書くための段落タグ（<p>）を追加しましょう。",
+    behaviorNote: "<p>（Paragraph）で囲んだテキストは、上下に適度な余白が空いたきれいな独立した文章のブロックとして表示されます。",
+    codeAnswer: "<p>フロントエンドエンジニアの作品集です。</p>",
+    targetFile: 'html',
+    targetKeyword: '<p>',
+    checkpoint: "`<p>` タグを使って文章の段落を追加してください。"
   },
   {
     step: 5,
-    title: "フォームと入力部品 (input)",
+    title: "STEP 5: リンク（<a>）を貼る",
     category: "HTML",
-    description: "ユーザーがテキストを入力するための入力部品（inputタグ）の基本構成です。",
-    htmlSample: `<input type="text" placeholder="例：山田太郎" />`,
-    cssSample: `/* まだCSSは使いません */`,
-    checkpoint: "HTMLエディタに入力欄を作るために `type=\"text\"` を持つinputタグを入力してください。",
-    targetKeyword: "type=\"text\"",
-    targetFile: 'html'
+    description: "他のページやサイトへ飛ぶためのハイパーリンク（<a>タグ）と、行き先を指定する href 属性を書きます。",
+    behaviorNote: "<a>タグ（Anchor）の href 属性にURLやファイルパスを指定することで、クリックしたユーザーを別の場所にジャンプさせることができます。",
+    codeAnswer: "<a href=\"https://google.com\">Googleへ行く</a>",
+    targetFile: 'html',
+    targetKeyword: 'href=',
+    checkpoint: "`<a href=\"...\">` のように href 属性を持ったリンクタグを配置してください。"
   },
   {
     step: 6,
-    title: "実務の鉄則！外部CSSファイルの読み込み",
-    category: "CSS",
-    description: "プロの現場ではCSSは別ファイル(style.css)で管理します。HTML側の<head>内に、CSSを合体させるための<link>タグを書きましょう！",
-    htmlSample: `<!DOCTYPE html>\n<html>\n<head>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <h1>CSSで色が変わるよ</h1>\n</body>\n</html>`,
-    cssSample: `h1 {\n  color: #06b6d4;\n}`,
-    checkpoint: "HTMLエディタ側に、外部CSSを読み込むための `<link rel=\"stylesheet\" href=\"style.css\">` を記述してください！",
-    targetKeyword: `href="style.css"`,
-    targetFile: 'html'
+    title: "STEP 6: パーツを囲むコンテナ（<div class>）を作る",
+    category: "HTML",
+    description: "デザインを適用するためのグループ化や枠組みとして最もよく使う `<div>` タグと `class` 属性を書きます。",
+    targetFile: 'html',
+    targetKeyword: 'class=',
+    checkpoint: "`<div class=\"card\">` のようにクラス付きのdivタグを配置してください。",
+    behaviorNote: "<div>自体には見た目の変化はありませんが、class名をつけることで、後からCSSでまとめてデザインやレイアウトを当てられるようになります。",
+    codeAnswer: "<div class=\"card\">\n  <p>カードの中身</p>\n</div>"
   },
+
+  // --- CSS (7-14) ---
   {
     step: 7,
-    title: "外部ファイル(style.css)へスタイルを記述する",
-    category: "CSS",
-    description: "HTMLとCSSがリンクされたので、ここからは「style.css」タブに切り替えて、文字色を変えるCSSを直接書き込んでいきましょう！",
-    htmlSample: `<link rel="stylesheet" href="style.css">\n<h1>シアン色に変えてみよう</h1>`,
-    cssSample: `h1 {\n  color: #06b6d4;\n}`,
-    checkpoint: "「style.css」タブに切り替え、文字色を変更する `color` プロパティを記述してください。",
-    targetKeyword: "color",
-    targetFile: 'css'
+    title: "STEP 7: 外部CSSの読み込み（<link>）",
+    category: "HTML",
+    description: "ここからデザインのCSS編！HTMLのヘッド内に、別ファイル（style.css）を読み込むためのlinkタグを書きます。",
+    targetFile: 'html',
+    targetKeyword: 'href="style.css"',
+    checkpoint: "index.html の <head> 内に `<link rel=\"stylesheet\" href=\"style.css\">` を記述してください。",
+    behaviorNote: "<link>タグによってHTMLと別ファイルのCSSが合体し、スタイルシートに書いたデザインがHTMLの要素に反映されるようになります。",
+    codeAnswer: "<link rel=\"stylesheet\" href=\"style.css\">"
   },
   {
     step: 8,
-    title: "ボックスモデル（内側余白 Padding）",
+    title: "STEP 8: 背景色を変える（background）",
     category: "CSS",
-    description: "デザインの命である余白です。境界線の内側にある「中身のテキストから境界線までの余白」を padding と呼び、style.cssに記述します。",
-    htmlSample: `<link rel="stylesheet" href="style.css">\n<div class="box">余白ボックス</div>`,
-    cssSample: `.box {\n  background: #334155;\n  padding: 20px;\n}`,
-    checkpoint: "「style.css」タブに、内側の余白を設定する `padding` プロパティを記述してください。",
-    targetKeyword: "padding",
-    targetFile: 'css'
+    description: "ここから「style.css」タブに切り替えて、真っ白な画面をダークトーンの背景色（background）に染めましょう。",
+    targetFile: 'css',
+    targetKeyword: 'background',
+    checkpoint: "style.css の body{} の中に `background:` プロパティを記述してください。",
+    behaviorNote: "bodyセレクタに対して background プロパティを指定すると、Webページ全体のキャンバスの背景色を自由に変えることができます。",
+    codeAnswer: "body {\n  background: #1e1e1e;\n}"
   },
   {
     step: 9,
-    title: "レイアウト崩れを防ぐ box-sizing",
+    title: "STEP 9: 文字の色と大きさを変える（color・font-size）",
     category: "CSS",
-    description: "指定した幅（width）の内側に余白や境界線を収め、全体の横幅が勝手に膨らむのを固定する実務必須の設定です。",
-    htmlSample: `<link rel="stylesheet" href="style.css">\n<div class="card">Card</div>`,
-    cssSample: `.card {\n  box-sizing: border-box;\n  width: 300px;\n}`,
-    checkpoint: "「style.css」タブに、幅の計算を狂わせないための `border-box` を入力してください。",
-    targetKeyword: "border-box",
-    targetFile: 'css'
+    description: "見出しやテキストの文字色（color）やフォントサイズ（font-size）を指定してデザインを整えます。",
+    targetFile: 'css',
+    targetKeyword: 'color',
+    checkpoint: "style.css に `color:` プロパティを記述して文字色を変更してください。",
+    behaviorNote: "colorプロパティで文字に鮮やかな色や白を指定し、font-sizeで文字の大きさをコントロールすることで視覚的な階層が生まれます。",
+    codeAnswer: "h1 {\n  color: #06b6d4;\n  font-size: 2rem;\n}"
   },
   {
     step: 10,
-    title: "要素の絶対配置 (Position: absolute)",
+    title: "STEP 10: ボックスの余白と角丸（padding・border-radius）",
     category: "CSS",
-    description: "要素を通常の位置関係から切り離し、自由な位置に重ねてピン留めする技術です。",
-    htmlSample: `<link rel="stylesheet" href="style.css">\n<div class="badge">NEW</div>`,
-    cssSample: `.badge {\n  position: absolute;\n  top: 10px;\n}`,
-    checkpoint: "「style.css」タブに、絶対配置を行うための `absolute` を入力してください。",
-    targetKeyword: "absolute",
-    targetFile: 'css'
+    description: "カード型のデザインを作るために、内側の余白を作る `padding` と、角を丸くする `border-radius` を書きます。",
+    targetFile: 'css',
+    targetKeyword: 'padding',
+    checkpoint: "style.css に内側余白を作る `padding:` を記述してください。",
+    behaviorNote: "paddingは要素の境界線から内側のテキストまでの距離を広げ、border-radiusは四隅の角をなめらかに丸めてデザインをおしゃれにします。",
+    codeAnswer: ".card {\n  padding: 20px;\n  border-radius: 8px;\n  background: #2d2d2d;\n}"
   },
   {
     step: 11,
-    title: "モダンレイアウトの王様 Flexbox",
+    title: "STEP 11: レイアウト崩れを防ぐ（box-sizing）",
     category: "CSS",
-    description: "要素を横並びにする現代Webの必須スキルです。並べたい要素の親ボックスに指定します。",
-    htmlSample: `<link rel="stylesheet" href="style.css">\n<div class="flex-box">\n  <div>A</div><div>B</div>\n</div>`,
-    cssSample: `.flex-box {\n  display: flex;\n}`,
-    checkpoint: "「style.css」タブに、横並びを発動させる `display: flex` を入力してください。",
-    targetKeyword: "display: flex",
-    targetFile: 'css'
+    description: "paddingを含めて要素の幅を計算させる、実務必須の設定『box-sizing: border-box;』を適用します。",
+    targetFile: 'css',
+    targetKeyword: 'box-sizing',
+    checkpoint: "style.css に `box-sizing: border-box;` を記述してください。",
+    behaviorNote: "通常はpaddingをつけると要素全体の幅が勝手に広がってレイアウトが崩れますが、border-boxを指定すると指定したwidthの中に余白が綺麗に収まるようになります。",
+    codeAnswer: "* {\n  box-sizing: border-box;\n}"
   },
   {
     step: 12,
-    title: "Flexboxの配置調整 (space-between)",
+    title: "STEP 12: 要素を横並びにする（display: flex）",
     category: "CSS",
-    description: "横並びにした子要素を、左右の端に綺麗にパッと分散配置するための軸制御です。",
-    htmlSample: `<link rel="stylesheet" href="style.css">\n<div class="menu"><span>Logo</span><span>Menu</span></div>`,
-    cssSample: `.menu {\n  display: flex;\n  justify-content: space-between;\n}`,
-    checkpoint: "「style.css」タブに、均等分散を行う `space-between` を入力してください。",
-    targetKeyword: "space-between",
-    targetFile: 'css'
+    description: "モダンWebの必須テクニック！親要素に `display: flex;` を指定して、縦に並ぶ要素を横一列に並べます。",
+    targetFile: 'css',
+    targetKeyword: 'display: flex',
+    checkpoint: "style.css に `display: flex;` を指定して横並びを有効化してください。",
+    behaviorNote: "親ボックスに display: flex を設定するだけで、中の子要素たちが自動的に縦方向から横方向へのスマートな並びに変化します。",
+    codeAnswer: ".container {\n  display: flex;\n}"
   },
   {
     step: 13,
-    title: "画面幅で切り替えるメディアクエリ",
+    title: "STEP 13: 横並びの間隔をあける（gap）",
     category: "CSS",
-    description: "スマホとPCでデザインを切り替えるレスポンシブの核となるCSS構文です。",
-    htmlSample: `<link rel="stylesheet" href="style.css">\n<p>画面幅を変えてみよう</p>`,
-    cssSample: `@media (max-width: 768px) {\n  body { background: #eee; }\n}`,
-    checkpoint: "「style.css」タブに、メディアクエリのトリガーとなる `@media` を記述してください。",
-    targetKeyword: "@media",
-    targetFile: 'css'
+    description: "Flexboxで横並びにした要素と要素の間に、きれいな隙間（ギャップ）をスマートに開けるプロパティです。",
+    targetFile: 'css',
+    targetKeyword: 'gap:',
+    checkpoint: "style.css に `gap:` プロパティで間隔を設定してください。",
+    behaviorNote: "marginを個別に計算しなくても、gapを指定するだけで並んだ要素同士の間に均等な隙間を自動であけることができます。",
+    codeAnswer: ".container {\n  display: flex;\n  gap: 15px;\n}"
   },
   {
     step: 14,
-    title: "JavaScriptの変数宣言 (const)",
-    category: "JavaScript",
-    description: "ここからJSです。一度代入したら中身を変更できない、最も安全でモダンな変数宣言のキーワードです。",
-    htmlSample: `<script>\n  const userName = "ボス";\n  document.write(userName);\n</script>`,
-    cssSample: `/* CSSは使いません */`,
-    checkpoint: "HTMLエディタ内の<script>内に、変数を作るための `const` を入力してください。",
-    targetKeyword: "const",
-    targetFile: 'html'
-  },
-  {
-    step: 15,
-    title: "条件分岐 (if文)",
-    category: "JavaScript",
-    description: "「もし〇〇ならこの処理」というプログラムの判断ロジックを作ります。",
-    htmlSample: `<script>\n  const score = 100;\n  if (score === 100) { document.write("満点！"); }\n</script>`,
-    cssSample: `/* CSSは使いません */`,
-    checkpoint: "HTMLエディタ内に、条件分岐の処理を作成するための `if` 文を記述してください。",
-    targetKeyword: "if",
-    targetFile: 'html'
+    title: "STEP 14: スマホ対応のメディアクエリ（@media）",
+    category: "CSS",
+    description: "画面幅が狭くなったとき（スマホ表示）にデザインを自動で切り替えるための `@media` ルールを記述します。",
+    targetFile: 'css',
+    targetKeyword: '@media',
+    checkpoint: "style.css に `@media` クエリを記述してください。",
+    behaviorNote: "「もし画面幅が768px以下になったら〜する」という条件分岐をCSSで書くことができ、レスポンシブ対応に絶対欠かせない機能です。",
+    codeAnswer: "@media (max-width: 768px) {\n  body {\n    padding: 10px;\n  }\n}"
   },
 
-  // 👑 【ここから後半戦突入！！ STEP 16 〜 STEP 30】
+  // --- JavaScript (15-20) ---
+  {
+    step: 15,
+    title: "STEP 15: JSで変数を定義する（const）",
+    category: "JavaScript",
+    description: "ここから「script.js」タブ！データやメッセージを安全に保管するための変数宣言（const）をマスターします。",
+    targetFile: 'js',
+    targetKeyword: 'const',
+    checkpoint: "script.js 内に `const` を使った変数宣言を記述してください。",
+    behaviorNote: "constは一度入れた値を変更されない安全な箱（変数）として記憶させる現代JavaScriptの基本の書き方です。",
+    codeAnswer: "const siteName = \"My Portfolio\";"
+  },
   {
     step: 16,
-    title: "JavaScriptのアロー関数構文",
+    title: "STEP 16: 条件分岐を作る（if文）",
     category: "JavaScript",
-    description: "モダン開発において function キーワードはほぼ使いません。矢印 `=>` を使ったスマートな関数定義をマスターします。",
-    htmlSample: `<script>\n  const greet = () => {\n    document.write("ハロー！");\n  };\n  greet();\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "HTMLタブ内のスクリプトに、アロー関数のシグネチャである `=>` 演算子を入力してください。",
-    targetKeyword: "=>",
-    targetFile: 'html'
+    description: "「もし条件を満たしていたら〜する」というプログラムの判断ロジック（if文）を組み立てます。",
+    targetFile: 'js',
+    targetKeyword: 'if',
+    checkpoint: "script.js 内に `if` 文による条件分岐を記述してください。",
+    behaviorNote: "括弧 () の中の条件が true（正しい）の時だけ、その中身のブロック {} の処理が実行される仕組みを作ります。",
+    codeAnswer: "const isLogged = true;\nif (isLogged) {\n  console.log(\"ログイン中\");\n}"
   },
   {
     step: 17,
-    title: "クリックイベントの検知 (addEventListener)",
+    title: "STEP 17: HTMLの要素を取得する（getElementById）",
     category: "JavaScript",
-    description: "ボタンを押したときにJavaScriptを動かす、動的Webのすべての基本となる超重要メソッドです。",
-    htmlSample: `<button id="btn">Click Me</button>\n<script>\n  const targetBtn = document.getElementById('btn');\n  targetBtn.addEventListener('click', () => {\n    alert('Clicked!');\n  });\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "イベントを安全に検知・登録するために `addEventListener` メソッドを正確に記述してください。",
-    targetKeyword: "addEventListener",
-    targetFile: 'html'
+    description: "JavaScriptからHTMLの特定のパーツを操作するために、ID名で要素を指名してキャッチします。",
+    targetFile: 'js',
+    targetKeyword: 'getElementById',
+    checkpoint: "script.js に `document.getElementById` を記述してください。",
+    behaviorNote: "HTML側に振られた id 属性を頼りに、そのパーツをJavaScriptの世界に引っ張り出して変数に格納することができます。",
+    codeAnswer: "const titleEl = document.getElementById('title');"
   },
   {
     step: 18,
-    title: "配列の高速加工ループ処理 (mapメソッド)",
+    title: "STEP 18: テキストを書き換える（textContent）",
     category: "JavaScript",
-    description: "React等のモダンフロント開発で最も多用される高階関数です。配列のデータを一括で加工・ループ展開します。",
-    htmlSample: `<script>\n  const numbers =;\n  const doubled = numbers.map(n => n * 2);\n  document.write(doubled.join(', '));\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "配列要素をマッピング加工処理するために `map` メソッドを入力してください。",
-    targetKeyword: ".map",
-    targetFile: 'html'
+    description: "取得したHTML要素のなかの文字を、プログラム側から動的に書き換えるプロパティを使います。",
+    targetFile: 'js',
+    targetKeyword: 'textContent',
+    checkpoint: "script.js に `textContent` を使って文字を書き換えるコードを書いてください。",
+    behaviorNote: "取得した要素の textContent に新しい文字列を代入すると、ブラウザ上の表示テキストが一瞬で書き換わります。",
+    codeAnswer: "const titleEl = document.getElementById('title');\ntitleEl.textContent = \"新しいタイトル！\";"
   },
   {
     step: 19,
-    title: "配列の条件間引き抽出 (filterメソッド)",
+    title: "STEP 19: クリックに反応させる（addEventListener）",
     category: "JavaScript",
-    description: "配列の中から、条件に合致したデータ（trueを返したもの）だけを集めて新しい配列を作る超便利メソッドです。",
-    htmlSample: `<script>\n  const ages =;\n  const adults = ages.filter(age => age >= 20);\n  document.write(adults.join('-'));\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "特定の条件でデータを絞り込むために `filter` メソッドを入力してください。",
-    targetKeyword: ".filter",
-    targetFile: 'html'
+    description: "ユーザーがボタンをクリックした瞬間に特定の処理を走らせる、動的Webの最重要メソッドです。",
+    targetFile: 'js',
+    targetKeyword: 'addEventListener',
+    checkpoint: "script.js に `addEventListener` を記述してください。",
+    behaviorNote: "「クリックされたら（click）、この関数を実行してね」というイベントの監視と予約を同時に登録できる超万能なメソッドです。",
+    codeAnswer: "const btn = document.getElementById('btn');\nbtn.addEventListener('click', () => {\n  alert('ボタンが押されました！');\n});"
   },
   {
     step: 20,
-    title: "非同期通信の救世主 (async / await)",
+    title: "STEP 20: 祝・ゼロからフロントエンドマスター完走！",
     category: "JavaScript",
-    description: "外部サーバーからデータを取ってくる処理（非同期処理）を、上から下に同期処理のように綺麗に書くための仕組みです。",
-    htmlSample: `<script>\n  async function loadData() {\n    const res = await fetch('https://api.github.com');\n    console.log("Loaded");\n  }\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "非同期プロミスの完了を待つために `await` キーワードをエディタに入力してください。",
-    targetKeyword: "await",
-    targetFile: 'html'
-  },
-  {
-    step: 21,
-    title: "JSONデータのパースとオブジェクト化",
-    category: "JavaScript",
-    description: "API通信で送られてくるデータはただの文字列です。それをJavaScriptのプログラムで扱えるようにオブジェクトに復元します。",
-    htmlSample: `<script>\n  const jsonText = '{"name":"Boss"}';\n  const obj = JSON.parse(jsonText);\n  document.write(obj.name);\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "JSON文字列をオブジェクトデータに解析逆変換する `JSON.parse` を入力してください。",
-    targetKeyword: "JSON.parse",
-    targetFile: 'html'
-  },
-  {
-    step: 22,
-    title: "ブラウザへの進捗永続保存 (localStorage)",
-    category: "JavaScript",
-    description: "サーバーを使わずに、ユーザーのPCブラウザにデータを半永久的にセーブ・記憶させる実務で超多用されるAPIです。",
-    htmlSample: `<script>\n  localStorage.setItem('user_mode', 'dark');\n  document.write("Saved Progress");\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "ブラウザのローカルメモリにキーと値をセーブ保存する `localStorage` を記述してください。",
-    targetKeyword: "localStorage",
-    targetFile: 'html'
-  },
-  {
-    step: 23,
-    title: "F12開発者ツールの Console デバッグ",
-    category: "DevTools & Git",
-    description: "ここからはプロの開発環境です。プログラムにエラーがないか、どんな中身が入っているかを Console タブに出力して調査します。",
-    htmlSample: `<script>\n  const debugVal = "🚀 SYSTEM NORMAL";\n  console.log(debugVal);\n</script>`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "開発者ツールのコンソールログへデバッグ出力を行う `console.log` を記述してください。",
-    targetKeyword: "console.log",
-    targetFile: 'html'
-  },
-  {
-    step: 24,
-    title: "Gitによるソースコード変更履歴のインデックス登録",
-    category: "DevTools & Git",
-    description: "チーム開発の絶対標準「Git」。新しく作ったファイルを次のコミット（保存）の対象として準備エリアへ乗せるコマンドを学びます。",
-    htmlSample: `\ngit add .`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "すべての変更ファイルをステージングエリアへ一括追加登録するコマンド `git add .` を入力してください。",
-    targetKeyword: "git add .",
-    targetFile: 'html'
-  },
-  {
-    step: 25,
-    title: "Gitによるメッセージ付きコミット（履歴確定）",
-    category: "DevTools & Git",
-    description: "ステージングに載せた変更に対して「何を変えたか」という説明メッセージを添えて、ローカルリポジトリに永久保存します。",
-    htmlSample: `git commit -m "feat: complete learning engine"`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "メッセージを伴うコミットを確定させるコマンド `git commit -m` を正確に入力してください。",
-    targetKeyword: "git commit -m",
-    targetFile: 'html'
-  },
-  {
-    step: 26,
-    title: "Gitによるリモートリポジトリへの同期 (Push)",
-    category: "DevTools & Git",
-    description: "手元のパソコンにコミットした変更履歴を、GitHubなどのクラウドサーバー側へアップロードしてチームに共有するコマンドです。",
-    htmlSample: `git push origin main`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "オリジンのメインブランチに差分を送信するコマンド `git push origin main` を記述してください。",
-    targetKeyword: "git push origin",
-    targetFile: 'html'
-  },
-  {
-    step: 27,
-    title: "モダンビルドツール Vite による爆速起動環境",
-    category: "Modern Dev",
-    description: "現在のフロントエンドはwebpackに代わり「Vite（ヴィート）」が標準です。開発サーバーを立ち上げる実務コマンドです。",
-    htmlSample: `npm run dev`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "ローカルにローカルホストの開発用ライブサーバーを爆速起動する `npm run dev` を記述してください。",
-    targetKeyword: "npm run dev",
-    targetFile: 'html'
-  },
-  {
-    step: 28,
-    title: "パッケージ管理ツールによる外部ライブラリ導入",
-    category: "Modern Dev",
-    description: "ReactやTailwindCSS、アイコンライブラリなど、世界中のプロが作った便利なパーツを自分のプロジェクトにインストールするコマンドです。",
-    htmlSample: `npm install tailwindcss`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "Nodeパッケージマネージャーからライブラリをインストールする `npm install` コマンドを入力してください。",
-    targetKeyword: "npm install",
-    targetFile: 'html'
-  },
-  {
-    step: 29,
-    title: "TypeScriptによる型の定義 (Interface)",
-    category: "Modern Dev",
-    description: "JavaScriptの弱点だった「バグの気づきにくさ」を解消する開発の主役です。データ構造の『設計図（型）』を定義します。",
-    htmlSample: `\ninterface UserProfile {\n  id: number;\n  name: string;\n}`,
-    cssSample: `/* 不要 */`,
-    checkpoint: "TypeScriptにおいて強固なカスタム型オブジェクトの設計図を定義する `interface` を入力してください。",
-    targetKeyword: "interface",
-    targetFile: 'html'
-  },
-  {
-    step: 30,
-    title: "祝・フロントエンドマスター！最終確認ビルド",
-    category: "Modern Dev",
-    description: "全30ステップ完走、おめでとうございます！最後に、書いた全コードを本番用の1ファイルに最適化・圧縮ビルドして出荷（デプロイ）するコマンドです！",
-    htmlSample: `npm run build`,
-    cssSample: `/* 完走おめでとうございます！ */`,
-    checkpoint: "プロジェクトを本番公開用のアセットにコンパイル・最適化書き出しする `npm run build` を入力して、完全合格を掴み取りましょう！",
-    targetKeyword: "npm run build",
-    targetFile: 'html'
+    description: "全20ステップお疲れ様でした！最後にコンソールへ完了ログを出力して、すべてのカリキュラムをクリアしましょう！",
+    targetFile: 'js',
+    targetKeyword: 'console.log',
+    checkpoint: "script.js に `console.log` を記述して完全クリアを掴み取ろう！",
+    behaviorNote: "開発者ツールのコンソール画面に文字を出力し、プログラムが正常に動いているかを確認するための基本中の基本の命令です。",
+    codeAnswer: "console.log(\"Frontend Master Completed!\");"
   }
 ];
 
 export default function LearningLab() {
   const [currentStepIdx, setCurrentStepIdx] = useState<number>(0);
+  
   const [userHtml, setUserHtml] = useState<string>("");
   const [userCss, setUserCss] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<'index.html' | 'style.css'>('index.html');
-
+  const [userJs, setUserJs] = useState<string>("");
+  
+  const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
   const [isPassed, setIsPassed] = useState<boolean>(false); 
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [saveStatus, setSaveStatus] = useState<string>("");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const currentStep = LEARNING_STEPS[currentStepIdx];
 
-  // 進捗自動ロード（中断から完全再開）
   useEffect(() => {
-    const savedStep = localStorage.getItem('learning_step_idx');
+    const savedStep = localStorage.getItem('learning_master_v3');
     if (savedStep) {
       const idx = parseInt(savedStep, 10);
-      if (idx < LEARNING_STEPS.length) setCurrentStepIdx(idx);
+      if (idx < LEARNING_STEPS.length) {
+        setCurrentStepIdx(idx);
+        setIsPassed(false);
+        setErrorMessage("");
+        setActiveTab(LEARNING_STEPS[idx].targetFile);
+        return;
+      }
     }
+    setActiveTab(LEARNING_STEPS[0].targetFile);
   }, []);
 
-  // ステップ変更時にワークスペースを完全初期化
   useEffect(() => {
-    setUserHtml("");
-    setUserCss("");
+    renderLivePreview(userHtml, userCss, userJs);
+  }, [userHtml, userCss, userJs]);
+
+  const handleStepChange = (idx: number) => {
+    setCurrentStepIdx(idx);
     setIsPassed(false);
     setErrorMessage("");
-    setActiveTab('index.html');
-    renderLivePreview("", "");
-  }, [currentStepIdx]);
-
-  const handleHtmlChange = (val: string) => {
-    setUserHtml(val);
-    renderLivePreview(val, userCss);
+    setActiveTab(LEARNING_STEPS[idx].targetFile);
+    localStorage.setItem('learning_master_v3', idx.toString());
   };
 
-  const handleCssChange = (val: string) => {
-    setUserCss(val);
-    renderLivePreview(userHtml, val);
-  };
-
-  // 外部CSSファイルをリアルタイムリンク結合するiframeシミュレーター
-  const renderLivePreview = (html: string, css: string) => {
+  const renderLivePreview = (html: string, css: string, js: string) => {
     if (!iframeRef.current) return;
-    
-    let combinedBlob = html;
-    if (html.includes('style.css')) {
-      combinedBlob = html + `<style>${css}</style>`;
-    }
+    let processedHtml = html
+      .replace(/<link[^>]*href=["']style\.css["'][^>]*>/gi, `<style>${css}</style>`)
+      .replace(/<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi, `<script>${js}</script>`);
 
-    const baseTemplate = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>body { font-family: sans-serif; padding: 15px; margin: 0; background: #fff; color: #111; }</style>
-      </head>
-      <body>${combinedBlob}</body>
-      </html>
-    `;
-    iframeRef.current.src = "data:text/html;charset=utf-8," + encodeURIComponent(baseTemplate);
+    iframeRef.current.src = "data:text/html;charset=utf-8," + encodeURIComponent(processedHtml);
   };
 
-  // Progate風厳密テスト判定
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editor.onDidChangeModelContent((e: any) => {
+      const currentLang = editor.getModel().getLanguageId();
+      if (currentLang !== 'html') return;
+
+      const changes = e.changes[0];
+      if (changes.text === '>') {
+        const position = editor.getPosition();
+        const textUntilPosition = editor.getModel().getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column
+        });
+        
+        const match = textUntilPosition.match(/<([a-zA-Z0-9\-]+)[^>]*>$/);
+        const voidElements = ['br', 'img', 'input', 'hr', 'meta', 'link'];
+        
+        if (match && !voidElements.includes(match[1])) {
+          const tag = match[1];
+          editor.executeEdits("auto-close", [
+            {
+              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+              text: `</${tag}>`,
+              forceMoveMarkers: true
+            }
+          ]);
+          editor.setPosition(position);
+        }
+      }
+    });
+  };
+
   const handleCheckCode = () => {
-    const codeToTest = currentStep.targetFile === 'html' ? userHtml : userCss;
-    const fileNameText = currentStep.targetFile === 'html' ? 'index.html' : 'style.css';
+    let codeToTest = "";
+    let fileNameText = "";
+    
+    switch (currentStep.targetFile) {
+      case 'html': codeToTest = userHtml; fileNameText = 'index.html'; break;
+      case 'css': codeToTest = userCss; fileNameText = 'style.css'; break;
+      case 'js': codeToTest = userJs; fileNameText = 'script.js'; break;
+    }
 
     if (codeToTest.includes(currentStep.targetKeyword)) {
       setIsPassed(true);
       setErrorMessage("");
-      // 合格時にその場自動バックグラウンドセーブ
-      localStorage.setItem('learning_step_idx', currentStepIdx.toString());
+      localStorage.setItem('learning_master_v3', currentStepIdx.toString());
     } else {
       setIsPassed(false);
-      setErrorMessage(`❌ クリティカルエラー:「${fileNameText}」内にキーワード「 ${currentStep.targetKeyword} 」が見つかりません。条件を再確認してください。`);
+      setErrorMessage(`❌ エラー:「${fileNameText}」内にキーワード「 ${currentStep.targetKeyword} 」が見つかりません。`);
     }
   };
 
   const handleNext = () => {
     if (currentStepIdx + 1 < LEARNING_STEPS.length) {
-      const nextIdx = currentStepIdx + 1;
-      setCurrentStepIdx(nextIdx);
-      localStorage.setItem('learning_step_idx', nextIdx.toString());
+      handleStepChange(currentStepIdx + 1);
     } else {
-      alert("🎉 おめでとうございます！！全30ステップを完全走破し、フロントエンド・プロフェッショナルマスターの称号を獲得しました！");
+      alert("🎉 おめでとうございます！！全20ステップを完全走破しました！");
     }
   };
 
   const handlePrev = () => {
-    if (currentStepIdx > 0) {
-      const prevIdx = currentStepIdx - 1;
-      setCurrentStepIdx(prevIdx);
-      localStorage.setItem('learning_step_idx', prevIdx.toString());
-    }
-  };
-
-  const handleSaveAndExit = () => {
-    localStorage.setItem('learning_step_idx', currentStepIdx.toString());
-    setSaveStatus("💾 現在の進捗（STEP " + currentStep.step + " / 30）をLocalStorageに永続セーブしました！");
-    setTimeout(() => setSaveStatus(""), 3000);
+    if (currentStepIdx > 0) handleStepChange(currentStepIdx - 1);
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#111827] text-white overflow-hidden text-left font-sans">
-      {/* トップバー */}
-      <div className="bg-[#1f2937] border-b border-slate-700 px-6 py-3 flex justify-between items-center shrink-0">
+    <div className="flex flex-col h-screen w-full bg-[#1e1e1e] text-white overflow-hidden text-left font-sans">
+      <div className="bg-[#252526] border-b border-[#3c3c3c] px-6 py-2 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-xl">🎓</span>
-          <h1 className="text-base font-black tracking-widest text-indigo-400">LEARNING LAB : INTERACTIVE COMPLETE</h1>
+          <span className="text-xl">✨</span>
+          <h1 className="text-sm font-black tracking-widest text-indigo-400">MASTER LAB : 動きの解説・正解付き全20ステップ</h1>
         </div>
-        
-        <div className="flex items-center gap-4">
-          {saveStatus && <span className="text-xs text-emerald-400 font-bold animate-pulse">{saveStatus}</span>}
-          <button onClick={handleSaveAndExit} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-1.5 rounded-lg border border-slate-600 cursor-pointer">
-            💾 中断セーブ
-          </button>
-          <div className="text-xs font-mono bg-slate-900 px-4 py-1.5 rounded-full border border-slate-700 font-bold">
-            STEP: {currentStep.step} / 30
-          </div>
+        <div className="text-xs font-mono bg-[#111] px-4 py-1.5 rounded-full border border-[#3c3c3c] font-bold text-cyan-400">
+          STEP: {currentStep.step} / 20 ({currentStep.category})
         </div>
       </div>
 
-      {/* メインレイアウト（3列） */}
       <div className="flex-1 flex overflow-hidden w-full">
-        
-        {/* 1列目：問題解説・判定トリガー（30%） */}
-        <div className="w-[30%] p-5 flex flex-col justify-between border-r border-slate-800 bg-[#111827] overflow-y-auto h-full">
+        {/* 1列目：解説・動き・正解見本（32%） */}
+        <div className="w-[32%] p-5 flex flex-col justify-between border-r border-[#3c3c3c] bg-[#1e1e1e] overflow-y-auto h-full">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
                 currentStep.category === 'HTML' ? 'bg-orange-600 text-white' :
-                currentStep.category === 'CSS' ? 'bg-sky-600 text-white' :
-                currentStep.category === 'JavaScript' ? 'bg-yellow-500 text-black' : 
-                currentStep.category === 'DevTools & Git' ? 'bg-purple-600 text-white' : 'bg-pink-600 text-white'
+                currentStep.category === 'CSS' ? 'bg-sky-600 text-white' : 'bg-yellow-500 text-black'
               }`}>
-                {currentStep.category}
+                {currentStep.category} コース
               </span>
-              <span className="text-xs text-slate-400 font-mono">STAGE {currentStep.step}</span>
             </div>
 
-            <h2 className="text-base font-black text-slate-100 mb-3">{currentStep.title}</h2>
-            <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-900/60 border border-slate-800 p-3 rounded-xl mb-3">
+            <h2 className="text-base font-black text-slate-100 mb-2">{currentStep.title}</h2>
+            <p className="text-[11px] text-[#cccccc] leading-relaxed bg-[#252526] border border-[#3c3c3c] p-3 rounded mb-3">
               {currentStep.description}
             </p>
 
-            <div className="bg-indigo-950/40 border border-indigo-900/60 p-3 rounded-xl text-[11px] leading-relaxed text-indigo-200 mb-3">
-              <strong className="block text-indigo-400 mb-0.5">🎯 クリア条件（編集対象: {currentStep.targetFile.toUpperCase()}）:</strong>
+            {/* 💡 動きの解説 */}
+            <div className="bg-sky-950/30 border border-sky-900/60 p-3 rounded text-[11px] leading-relaxed text-sky-200 mb-3">
+              <strong className="block text-sky-400 mb-1">💡 タグ・コードの動き:</strong>
+              {currentStep.behaviorNote}
+            </div>
+
+            {/* 👑 正解コード見本 */}
+            <div className="bg-[#141414] border border-[#3c3c3c] p-3 rounded font-mono text-[10px] text-emerald-400 whitespace-pre overflow-x-auto mb-3">
+              <span className="text-[9px] text-emerald-500 font-bold block mb-1">📝 コードの正解例（参考）:</span>
+              {currentStep.codeAnswer}
+            </div>
+
+            <div className="bg-indigo-950/35 border border-indigo-900 p-3 rounded text-[11px] leading-relaxed text-indigo-300 mb-2 shadow-inner">
+              <strong className="block text-indigo-400 mb-1">🎯 クリア条件 ({currentStep.targetFile.toUpperCase()}):</strong>
               {currentStep.checkpoint}
             </div>
-
-            <div className="bg-[#0a0f1d] border border-slate-800 p-3 rounded-xl font-mono text-[10px] text-slate-400 whitespace-pre overflow-x-auto mb-2">
-              <span className="text-[9px] text-orange-400 font-bold block mb-1">💡 HTML お手本:</span>
-              {currentStep.htmlSample}
-            </div>
-            {currentStep.step >= 6 && (
-              <div className="bg-[#0a0f1d] border border-slate-800 p-3 rounded-xl font-mono text-[10px] text-slate-400 whitespace-pre overflow-x-auto">
-                <span className="text-[9px] text-sky-400 font-bold block mb-1">💡 style.css お手本:</span>
-                {currentStep.cssSample}
-              </div>
-            )}
           </div>
 
-          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-800 shrink-0">
-            <button onClick={handlePrev} disabled={currentStepIdx === 0} className={`flex-1 py-2 rounded-lg text-[11px] font-bold border ${currentStepIdx === 0 ? 'border-slate-800 text-slate-600 bg-transparent cursor-not-allowed' : 'border-slate-700 hover:bg-slate-800 text-slate-200 cursor-pointer'}`}>
+          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[#3c3c3c] shrink-0">
+            <button onClick={handlePrev} disabled={currentStepIdx === 0} className={`flex-1 py-2 rounded text-[11px] font-bold border transition ${currentStepIdx === 0 ? 'border-[#3c3c3c] text-[#555] bg-transparent cursor-not-allowed' : 'border-[#444] hover:bg-[#333] text-slate-200 cursor-pointer'}`}>
               ◀ 戻る
             </button>
             {isPassed ? (
-              <button onClick={handleNext} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] rounded-lg cursor-pointer shadow-md">
-                {currentStep.step === 30 ? "🏆 全コード完走！" : "正解！次へ ➔"}
+              <button onClick={handleNext} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] rounded cursor-pointer shadow-md transition">
+                {currentStep.step === 20 ? "🏆 完走！" : "正解！次へ ➔"}
               </button>
             ) : (
-              <button onClick={handleCheckCode} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] rounded-lg cursor-pointer shadow-md">
+              <button onClick={handleCheckCode} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] rounded cursor-pointer shadow-md transition">
                 🔍 判定する
               </button>
             )}
           </div>
         </div>
 
-        {/* 2列目：マルチタブコードエディタ（38%） */}
-        <div className="w-[38%] bg-[#0f1420] flex flex-col h-full border-r border-slate-900">
-          <div className="bg-[#161d30] border-b border-slate-900 flex text-xs shrink-0 items-center justify-between pr-3">
+        {/* 2列目：マルチタブエディタ（36%） */}
+        <div className="w-[36%] bg-[#1e1e1e] flex flex-col h-full border-r border-[#3c3c3c]">
+          <div className="bg-[#252526] border-b border-[#3c3c3c] flex text-xs shrink-0 items-center justify-between pr-3">
             <div className="flex">
-              <button 
-                onClick={() => setActiveTab('index.html')} 
-                className={`px-4 py-2 font-mono text-[11px] transition-all cursor-pointer ${activeTab === 'index.html' ? 'bg-[#0a0f1d] text-orange-400 border-t-2 border-orange-500 font-bold' : 'bg-[#1e2937]/40 text-slate-500'}`}
-              >
+              <button onClick={() => setActiveTab('html')} className={`px-4 py-2 font-mono text-[11px] transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'html' ? 'bg-[#1e1e1e] text-orange-400 border-t-2 border-orange-500 font-bold' : 'text-[#858585] hover:bg-[#2d2d2d]'}`}>
                 🌐 index.html
               </button>
-              {currentStep.step >= 6 && (
-                <button 
-                  onClick={() => setActiveTab('style.css')} 
-                  className={`px-4 py-2 font-mono text-[11px] transition-all cursor-pointer ${activeTab === 'style.css' ? 'bg-[#0a0f1d] text-sky-400 border-t-2 border-sky-500 font-bold' : 'bg-[#1e2937]/40 text-slate-500'}`}
-                >
-                  📘 style.css
-                </button>
-              )}
+              <button onClick={() => setActiveTab('css')} className={`px-4 py-2 font-mono text-[11px] transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'css' ? 'bg-[#1e1e1e] text-sky-400 border-t-2 border-sky-500 font-bold' : 'text-[#858585] hover:bg-[#2d2d2d]'}`}>
+                📘 style.css
+              </button>
+              <button onClick={() => setActiveTab('js')} className={`px-4 py-2 font-mono text-[11px] transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'js' ? 'bg-[#1e1e1e] text-yellow-400 border-t-2 border-yellow-500 font-bold' : 'text-[#858585] hover:bg-[#2d2d2d]'}`}>
+                💛 script.js
+              </button>
             </div>
-            {isPassed && <span className="text-[9px] bg-emerald-950 border border-emerald-500 text-emerald-400 px-1.5 py-0.5 rounded font-black">PASSED</span>}
+            {isPassed && <span className="text-[9px] bg-emerald-950 border border-emerald-500 text-emerald-400 px-1.5 py-0.5 rounded font-black shrink-0">PASSED</span>}
           </div>
           
-          {activeTab === 'index.html' ? (
-            <textarea
-              value={userHtml}
-              onChange={(e) => handleHtmlChange(e.target.value)}
-              disabled={isPassed && currentStep.targetFile === 'html'}
-              placeholder=""
-              className="flex-1 p-5 font-mono text-xs leading-relaxed outline-none resize-none bg-[#0a0f1d] text-orange-300 select-text"
-            />
-          ) : (
-            <textarea
-              value={userCss}
-              onChange={(e) => handleCssChange(e.target.value)}
-              disabled={isPassed && currentStep.targetFile === 'css'}
-              placeholder="/* style.css タブにタイピングしてください */"
-              className="flex-1 p-5 font-mono text-xs leading-relaxed outline-none resize-none bg-[#0a0f1d] text-sky-300 select-text"
-            />
-          )}
+          <div className="flex-1 relative w-full h-full overflow-hidden">
+            {activeTab === 'html' && (
+              <Editor height="100%" language="html" theme="vs-dark" value={userHtml} onChange={(v) => setUserHtml(v || "")} onMount={handleEditorDidMount} options={{ fontSize: 13, minimap: { enabled: false }, wordWrap: 'on', tabSize: 2 }} />
+            )}
+            {activeTab === 'css' && (
+              <Editor height="100%" language="css" theme="vs-dark" value={userCss} onChange={(v) => setUserCss(v || "")} options={{ fontSize: 13, minimap: { enabled: false }, wordWrap: 'on', tabSize: 2 }} />
+            )}
+            {activeTab === 'js' && (
+              <Editor height="100%" language="javascript" theme="vs-dark" value={userJs} onChange={(v) => setUserJs(v || "")} options={{ fontSize: 13, minimap: { enabled: false }, wordWrap: 'on', tabSize: 2 }} />
+            )}
+          </div>
 
           {errorMessage && (
-            <div className="bg-rose-950/80 border-t border-rose-800 text-rose-300 p-3 font-mono text-[11px] leading-relaxed">
+            <div className="bg-rose-950/80 border-t border-rose-900 text-rose-300 p-3 font-mono text-[11px] leading-relaxed shrink-0">
               {errorMessage}
             </div>
           )}
         </div>
 
-        {/* 3列目：ライブブラウザプレビュー（32%） */}
+        {/* 3列目：プレビュー（32%） */}
         <div className="w-[32%] bg-[#1a1a1a] flex flex-col h-full">
-          <div className="bg-[#161d30] px-4 py-2 text-[10px] font-mono text-indigo-400 border-b border-slate-900 flex justify-between items-center font-bold tracking-wider">
-            <span>🖥️ LIVE BROWSER PREVIEW</span>
-            <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-950 border border-indigo-800">REALTIME</span>
+          <div className="bg-[#252526] px-4 py-2 text-[10px] font-mono text-indigo-400 border-b border-[#3c3c3c] flex justify-between items-center font-bold tracking-wider">
+            <span>🖥️ PREVIEW (LIVE)</span>
+            <span className="text-[8px] px-1.5 py-0.5 rounded bg-indigo-950 border border-indigo-800">SYNCED</span>
           </div>
           <div className="flex-1 p-2 bg-[#111] h-full">
             <iframe 
               ref={iframeRef} 
               className="w-full h-full bg-white rounded-lg shadow-inner border-0" 
-              title="Learning Sandbox" 
+              title="Preview" 
             />
           </div>
         </div>
