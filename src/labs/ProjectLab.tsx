@@ -4,12 +4,23 @@ interface ProjectItem {
 }
 
 interface ProjectLabProps {
-  projects: ProjectItem[];
+  projects?: ProjectItem[]; // オプショナルにしておく
 }
 
-export default function ProjectLab({ projects }: ProjectLabProps) {
+export default function ProjectLab({ 
+  projects = [
+    { 
+      name: "サンプル実績 01：LPヘッダーバナー", 
+      code: "<div style='padding: 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border-radius: 8px; text-align: center;'><b>✨ 特別キャンペーン実施中！</b></div>" 
+    },
+    { 
+      name: "サンプル実績 02：お申し込みボタン", 
+      code: "<div style='text-align: center;'><button style='background: #10b981; color: white; padding: 10px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;'>今すぐ無料で始める</button></div>" 
+    }
+  ] 
+}: ProjectLabProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <h2 className="text-2xl font-bold text-cyan-400">🚀 Project Lab: あなたの制作実績ポートフォリオ</h2>
       <p className="text-sm text-slate-400">これまでのWork体験で、あなたが実際にコードを書いて納品した成果物一覧です。</p>
       
@@ -24,7 +35,7 @@ export default function ProjectLab({ projects }: ProjectLabProps) {
               <span className="text-xs text-cyan-400 font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">#{idx + 1}</span>
             </div>
 
-            {/* 👑 超強力：納品したコードの見た目をそのままここに再現して展示する */}
+            {/* 納品したコードの見た目をそのまま再現 */}
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-900 min-h-[140px] flex items-center justify-center overflow-hidden mb-3">
               <div className="w-full scale-90" dangerouslySetInnerHTML={{ __html: proj.code }} />
             </div>

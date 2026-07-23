@@ -1,42 +1,58 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
 // クリーンに型とデータを読み込み
 import type { TraceStage, TracePage } from './traceData';
 import { TRACE_STAGES } from './traceData';
 
 export default function TraceLab() {
   const [currentStageIdx, setCurrentStageIdx] = useState<number>(0);
-  const stage: TraceStage = TRACE_STAGES[currentStageIdx] || TRACE_STAGES;
+  const stage: TraceStage = TRACE_STAGES[currentStageIdx] || TRACE_STAGES[0];
 
   const [userCodes, setUserCodes] = useState<Record<string, string>>({});
   const [activeFileName, setActiveFileName] = useState<string>('index.html');
   const [browserPath, setBrowserPath] = useState<string>('index.html');
   const [isPassed, setIsPassed] = useState<boolean>(false);
+  const [saveNotification, setSaveNotification] = useState<string>('');
 
-  const lineNumbersRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  // 💡 ステージ変更時、またはローカルストレージからの復元
   useEffect(() => {
     if (!stage || !stage.pages || stage.pages.length === 0) return;
 
+    const storageKey = `trace_lab_stage_${stage.id}_codes`;
+    const savedCodes = localStorage.getItem(storageKey);
+
     const initialCodes: Record<string, string> = {};
-    stage.pages.forEach(p => {
-      initialCodes[p.fileName] = p.initialCode || '';
-    });
+    if (savedCodes) {
+      try {
+        const parsed = JSON.parse(savedCodes);
+        stage.pages.forEach(p => {
+          initialCodes[p.fileName] = parsed[p.fileName] !== undefined ? parsed[p.fileName] : (p.initialCode || '');
+        });
+      } catch (e) {
+        stage.pages.forEach(p => {
+          initialCodes[p.fileName] = p.initialCode || '';
+        });
+      }
+    } else {
+      stage.pages.forEach(p => {
+        initialCodes[p.fileName] = p.initialCode || '';
+      });
+    }
+
     setUserCodes(initialCodes);
     
-    const firstTarget = stage.pages?.fileName || 'index.html';
+    const firstTarget = stage.pages[0]?.fileName || 'index.html';
     setActiveFileName(firstTarget);
     setBrowserPath(firstTarget);
-    setIsPassed(false);
+
+    // クリア判定の初期チェック
+    checkIfPassed(initialCodes);
   }, [currentStageIdx]);
 
-  const handleCodeChange = (fileName: string, val: string) => {
-    const updated = { ...userCodes, [fileName]: val };
-    setUserCodes(updated);
-
+  const checkIfPassed = (codes: Record<string, string>) => {
     let allMatch = true;
     stage.pages.forEach(p => {
-      const userClean = (updated[p.fileName] || "").replace(/\s/g, "");
+      const userClean = (codes[p.fileName] || "").replace(/\s/g, "");
       const correctClean = (p.correctCode || "").replace(/\s/g, "");
       if (userClean !== correctClean) {
         allMatch = false;
@@ -45,10 +61,73 @@ export default function TraceLab() {
     setIsPassed(allMatch);
   };
 
-  const handleScroll = () => {
-    if (textareaRef.current && lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+  const handleCodeChange = (fileName: string, val: string) => {
+    const updated = { ...userCodes, [fileName]: val };
+    setUserCodes(updated);
+    checkIfPassed(updated);
+  };
+
+  // 💡 手動一時保存ボタンの処理
+  const handleManualSave = () => {
+    const storageKey = `trace_lab_stage_${stage.id}_codes`;
+    localStorage.setItem(storageKey, JSON.stringify(userCodes));
+    setSaveNotification("💾 一時保存しました！");
+    setTimeout(() => setSaveNotification(""), 2500);
+  };
+
+  // 💡 一時保存リセット
+  const handleResetStorage = () => {
+    if (window.confirm("このステージの保存データを初期状態に戻しますか？")) {
+      const storageKey = `trace_lab_stage_${stage.id}_codes`;
+      localStorage.removeItem(storageKey);
+      
+      const initialCodes: Record<string, string> = {};
+      stage.pages.forEach(p => {
+        initialCodes[p.fileName] = p.initialCode || '';
+      });
+      setUserCodes(initialCodes);
+      checkIfPassed(initialCodes);
+      setSaveNotification("🗑️ リセットしました");
+      setTimeout(() => setSaveNotification(""), 2500);
     }
+  };
+
+  // Monaco Editor の自動補完（閉じタグ挿入）設定
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editor.onDidChangeModelContent((e: any) => {
+      const model = editor.getModel();
+      if (!model) return;
+      const currentLang = model.getLanguageId();
+      if (currentLang !== 'html') return;
+
+      const changes = e.changes?.[0];
+      if (!changes || changes.text !== '>') return;
+
+      const position = editor.getPosition();
+      if (!position) return;
+
+      const textUntilPosition = model.getValueInRange({
+        startLineNumber: position.lineNumber,
+        startColumn: 1,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column
+      });
+      
+      const match = textUntilPosition.match(/<([a-zA-Z0-9\-]+)[^>]*>$/);
+      const voidElements = ['br', 'img', 'input', 'hr', 'meta', 'link'];
+      
+      if (match && !voidElements.includes(match[1]) && monaco?.Range) {
+        const tag = match[1];
+        editor.executeEdits("auto-close", [
+          {
+            range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+            text: `</${tag}>`,
+            forceMoveMarkers: true
+          }
+        ]);
+        editor.setPosition(position);
+      }
+    });
   };
 
   const renderVirtualBrowser = () => {
@@ -82,7 +161,6 @@ export default function TraceLab() {
           <span className="text-emerald-500">🔒 https://</span>
           <span className="font-bold text-slate-800">localhost:1420/{targetPath}</span>
         </div>
-        {/* 👑 ここに「リンククリック時のアプリ崩壊防御＆スムーズスクロール機能」を大復活！！！ */}
         <div 
           className="flex-1 w-full overflow-auto" 
           dangerouslySetInnerHTML={{ __html: finalBlob }} 
@@ -90,11 +168,10 @@ export default function TraceLab() {
             const target = e.target as HTMLElement;
             const anchor = target.closest('a');
             if (anchor) {
-              e.preventDefault(); // 👑 デスクトップアプリ自体の画面遷移（崩壊）を絶対阻止！
+              e.preventDefault(); 
               const href = anchor.getAttribute('href');
               
               if (href && href.startsWith('#')) {
-                // ページ内リンク（#sec-2など）の処理：プレビュー内でスムーズスクロール！
                 const id = href.substring(1);
                 const container = e.currentTarget as HTMLElement;
                 const targetEl = container.querySelector('#' + id);
@@ -102,7 +179,6 @@ export default function TraceLab() {
                   targetEl.scrollIntoView({ behavior: 'smooth' });
                 }
               } else if (href && userCodes[href] !== undefined) {
-                // 別ファイルへの仮想遷移
                 setBrowserPath(href);
               } else if (href) {
                 alert(`エラー: '${href}' はまだ作成されていないか、存在しません！`);
@@ -114,20 +190,18 @@ export default function TraceLab() {
     );
   };
 
-  const activePage = getActivePage();
-  const displayCode = activePage.correctCode || '';
-
-  function getActivePage(): TracePage {
+  const getActivePage = (): TracePage => {
     if (stage && stage.pages && stage.pages.length > 0) {
       const found = stage.pages.find(p => p.fileName === activeFileName);
       if (found) return found;
-      return stage.pages;
+      return stage.pages[0];
     }
     return { fileName: 'index.html', initialCode: '', correctCode: '', language: 'html' };
-  }
+  };
 
+  const activePage = getActivePage();
+  const displayCode = activePage.correctCode || '';
   const correctLineNumbers = Array.from({ length: Math.max(displayCode.split('\n').length, 1) }, (_, i) => i + 1);
-  const userLineNumbers = Array.from({ length: Math.max((userCodes[activeFileName] || '').split('\n').length, 1) }, (_, i) => i + 1);
 
   return (
     <div className="w-full flex-1 flex flex-col overflow-hidden bg-[#141414]">
@@ -143,20 +217,43 @@ export default function TraceLab() {
         </div>
       </div>
 
-      {/* ステージ大整列エリア */}
-      <div className="bg-[#252526] border-b border-[#3c3c3c] px-2 py-1 flex gap-1.5 overflow-x-auto text-xs items-center shrink-0 w-full">
-        <span className="text-[10px] font-bold text-[#858585] uppercase font-mono">SELECT STAGE:</span>
-        {TRACE_STAGES.map((s, idx) => (
-          <button
-            key={`stage-btn-${s.id}-${idx}`}
-            onClick={() => setCurrentStageIdx(idx)}
-            className={`px-2 py-0.5 rounded font-mono text-[11px] font-bold border transition ${
-              currentStageIdx === idx ? 'bg-[#37373d] text-amber-400 border-amber-500 shadow-md' : 'bg-[#1e1e1e] text-slate-400 border-transparent hover:bg-[#2d2d2d]'
-            }`}
+      {/* ステージ選択 ＆ 一時保存ボタンエリア */}
+      <div className="bg-[#252526] border-b border-[#3c3c3c] px-3 py-1.5 flex items-center justify-between text-xs shrink-0 w-full select-none">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-[#858585] uppercase font-mono">SELECT STAGE:</span>
+          <select
+            value={currentStageIdx}
+            onChange={(e) => setCurrentStageIdx(parseInt(e.target.value, 10))}
+            className="bg-[#1e1e1e] text-amber-300 text-xs font-bold px-3 py-1 rounded border border-[#444] cursor-pointer outline-none"
           >
-            #{s.id}
+            {TRACE_STAGES.map((s, idx) => (
+              <option key={`stage-opt-${s.id}-${idx}`} value={idx}>
+                STAGE {s.id}: {s.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {saveNotification && (
+            <span className="text-xs text-emerald-400 font-bold animate-pulse font-mono">
+              {saveNotification}
+            </span>
+          )}
+          <button
+            onClick={handleManualSave}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded text-xs font-bold transition-colors cursor-pointer shadow"
+          >
+            💾 一時保存
           </button>
-        ))}
+          <button
+            onClick={handleResetStorage}
+            className="bg-[#333] hover:bg-[#444] text-gray-300 px-2.5 py-1 rounded text-xs transition-colors cursor-pointer"
+            title="保存をリセット"
+          >
+            初期化
+          </button>
+        </div>
       </div>
 
       {/* サブファイル用：子タブバー */}
@@ -201,24 +298,26 @@ export default function TraceLab() {
           </div>
         </div>
 
-        {/* ② 中央：[入力エディタ] */}
+        {/* ② 中央：[入力エディタ (Monaco Editor)] */}
         <div className="flex flex-col h-full overflow-hidden border-r border-[#2d2d2d]">
           <div className="bg-[#1e1e1e] text-amber-500 font-bold text-[10px] px-3 py-1.5 uppercase tracking-wider select-none shrink-0 border-b border-[#2d2d2d] font-mono">
             ✍️ YOUR EDITOR ({activeFileName})
           </div>
-          <div className="flex-1 flex bg-[#141414] h-full w-full relative">
-            <div ref={lineNumbersRef} className="w-10 bg-[#141414] text-[#5a5a5a] font-mono text-[11px] text-right pr-2 py-3 border-r border-[#2d2d2d] select-none overflow-hidden leading-relaxed shrink-0">
-              {userLineNumbers.map(ln => <div key={`user-ln-${ln}`} className="h-[18px]">{ln}</div>)}
-            </div>
-            <textarea
-              ref={textareaRef}
+          <div className="flex-1 bg-[#141414] h-full w-full relative">
+            <Editor
+              height="100%"
+              language={activePage.language as any}
+              theme="vs-dark"
               value={userCodes[activeFileName] || ''}
-              onChange={(e) => handleCodeChange(activeFileName, e.target.value)}
-              onScroll={handleScroll}
-              className="flex-1 bg-transparent text-[#9cdcfe] font-mono text-[12px] outline-none resize-none p-3 pl-2 leading-relaxed text-left overflow-y-auto whitespace-pre h-full w-full"
-              style={{ caretColor: '#fff', lineHeight: '18px' }}
-              placeholder="見本コードをここに写し取ってください..."
-              spellCheck={false}
+              onChange={(val) => handleCodeChange(activeFileName, val || '')}
+              onMount={handleEditorDidMount}
+              options={{
+                fontSize: 12,
+                minimap: { enabled: false },
+                wordWrap: 'on',
+                tabSize: 2,
+                autoClosingBrackets: 'always',
+              }}
             />
           </div>
         </div>

@@ -1,22 +1,22 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
-import { HelpCircle, Code2, GitCommit, Eye, Settings, FileCode, MonitorPlay, Target, BookOpen, Briefcase, Layout } from 'lucide-react';
+import { HelpCircle, Code2, GitCommit, Eye, Settings, FileCode, MonitorPlay, Target, BookOpen, Briefcase, Layout, ChevronDown, ChevronRight, Folder } from 'lucide-react';
 
-// すべてのLabをインポート（※ CodeLab だけ前回 export default に変更した場合は {} を外しています）
-import  QuizLab  from './labs/QuizLab';
+// 各Labのインポート
+import QuizLab from './labs/QuizLab';
 import CodeLab from './labs/CodeLab';
-import  TraceLab  from './labs/TraceLab';
-import  VisualLab  from './labs/VisualLab';
-import  DesignLab  from './labs/DesignLab';
-import  LearningLab  from './labs/LearningLab';
-import  MissionLab  from './labs/MissionLab';
-import  ProjectLab  from './labs/ProjectLab';
-import  WorkLab  from './labs/WorkLab';
-import  WpPlaygroundLab  from './labs/WpPlaygroundLab';
-import  WpTraceLab  from './labs/WpTraceLab';
+import TraceLab from './labs/TraceLab';
+import VisualLab from './labs/VisualLab';
+import DesignLab from './labs/DesignLab';
+import LearningLab from './labs/LearningLab';
+import MissionLab from './labs/MissionLab';
+import ProjectLab from './labs/ProjectLab';
+import WorkLab from './labs/WorkLab';
+import WpPlaygroundLab from './labs/WpPlaygroundLab';
+import WpTraceLab from './labs/WpTraceLab';
 
-// パネルに表示するコンポーネントを全登録
+// パネルに表示するコンポーネントの登録
 const components = {
   quiz: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><QuizLab /></div>,
   code: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><CodeLab /></div>,
@@ -35,10 +35,23 @@ export default function App() {
   const [api, setApi] = useState<DockviewReadyEvent['api']>();
   const [activeMenu, setActiveMenu] = useState('explorer');
 
+  // カテゴリフォルダの開閉状態
+  const [openFolders, setOpenFolders] = useState({
+    beginnerNew: true,
+    beginner: true,
+    design: true,
+    intermediate: true,
+    wp: true,
+    practice: true,
+  });
+
+  const toggleFolder = (key: keyof typeof openFolders) => {
+    setOpenFolders(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const onReady = (event: DockviewReadyEvent) => {
     setApi(event.api);
-    // 初期表示するタブ
-    event.api.addPanel({ id: 'code_panel', component: 'code', title: 'CodeLab.tsx' });
+    event.api.addPanel({ id: 'learning_panel', component: 'learning', title: 'コード学習ラボ.tsx' });
   };
 
   const openFile = (id: string, component: string, title: string) => {
@@ -51,13 +64,23 @@ export default function App() {
     api.addPanel({ id, component, title });
   };
 
-  // サイドバーのメニュー項目のコンポーネント化（コードをスッキリさせるため）
   const SidebarItem = ({ id, comp, title, Icon, color }: { id: string, comp: string, title: string, Icon: any, color: string }) => (
     <div 
-      className="px-4 py-1.5 cursor-pointer flex items-center gap-2 hover:bg-[#2a2d2e] transition-colors" 
+      className="pl-6 pr-4 py-1.5 cursor-pointer flex items-center gap-2 hover:bg-[#2a2d2e] transition-colors text-xs" 
       onClick={() => openFile(id, comp, title)}
     >
-      <Icon size={16} className={color} />
+      <Icon size={14} className={color} />
+      <span className="truncate">{title}</span>
+    </div>
+  );
+
+  const FolderHeader = ({ title, isOpen, onClick }: { title: string, isOpen: boolean, onClick: () => void }) => (
+    <div 
+      className="px-3 py-1.5 cursor-pointer flex items-center gap-1.5 hover:bg-[#2a2d2e] transition-colors text-xs font-bold text-gray-300 select-none"
+      onClick={onClick}
+    >
+      {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+      <Folder size={14} className="text-yellow-500" />
       <span className="truncate">{title}</span>
     </div>
   );
@@ -71,33 +94,103 @@ export default function App() {
           <button 
             className={`p-2 rounded hover:bg-[#444444] ${activeMenu === 'explorer' ? 'text-white border-l-2 border-[#007acc] bg-[#2a2d2e]' : 'text-[#858585]'}`}
             onClick={() => setActiveMenu('explorer')}
+            title="エクスプローラー"
           >
             <Eye size={22} />
           </button>
           <div className="flex-1"></div>
-          <button className="p-2 text-[#858585] hover:text-white rounded hover:bg-[#444444]">
+          <button className="p-2 text-[#858585] hover:text-white rounded hover:bg-[#444444]" title="設定">
             <Settings size={22} />
           </button>
         </div>
 
         {/* サイドバー: エクスプローラー */}
         {activeMenu === 'explorer' && (
-          <div className="w-56 bg-[#252526] border-r border-[#3c3c3c] flex flex-col flex-shrink-0 select-none">
-            <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#bbbbbb] border-b border-[#3c3c3c]">
-              Explorer
+          <div className="w-64 bg-[#252526] border-r border-[#3c3c3c] flex flex-col flex-shrink-0 select-none">
+            <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#bbbbbb] border-b border-[#3c3c3c] flex justify-between items-center">
+              <span>エクスプローラー</span>
+              <span className="text-[10px] text-indigo-400 font-mono">学習ラボ一覧</span>
             </div>
-            <div className="flex-1 py-2 text-sm overflow-y-auto">
-              <SidebarItem id="code_panel" comp="code" title="CodeLab.tsx" Icon={Code2} color="text-[#4ec9b0]" />
-              <SidebarItem id="quiz_panel" comp="quiz" title="QuizLab.tsx" Icon={HelpCircle} color="text-[#569cd6]" />
-              <SidebarItem id="trace_panel" comp="trace" title="TraceLab.tsx" Icon={GitCommit} color="text-[#ce9178]" />
-              <SidebarItem id="visual_panel" comp="visual" title="VisualLab.tsx" Icon={Eye} color="text-[#dcdcaa]" />
-              <SidebarItem id="design_panel" comp="design" title="DesignLab.tsx" Icon={Layout} color="text-[#c586c0]" />
-              <SidebarItem id="learning_panel" comp="learning" title="LearningLab.tsx" Icon={BookOpen} color="text-[#4fc1ff]" />
-              <SidebarItem id="mission_panel" comp="mission" title="MissionLab.tsx" Icon={Target} color="text-[#f48771]" />
-              <SidebarItem id="project_panel" comp="project" title="ProjectLab.tsx" Icon={Briefcase} color="text-[#d7ba7d]" />
-              <SidebarItem id="work_panel" comp="work" title="WorkLab.tsx" Icon={MonitorPlay} color="text-[#9cdcfe]" />
-              <SidebarItem id="wp_playground_panel" comp="wpPlayground" title="WpPlaygroundLab.tsx" Icon={FileCode} color="text-[#4ec9b0]" />
-              <SidebarItem id="wp_trace_panel" comp="wpTrace" title="WpTraceLab.tsx" Icon={GitCommit} color="text-[#ce9178]" />
+            
+            <div className="flex-1 py-2 overflow-y-auto">
+              
+              {/* 1. 始めたばかりの人向け */}
+              <FolderHeader 
+                title="🚀 始めたばかりの人向け" 
+                isOpen={openFolders.beginnerNew} 
+                onClick={() => toggleFolder('beginnerNew')} 
+              />
+              {openFolders.beginnerNew && (
+                <div className="py-0.5">
+                  <SidebarItem id="learning_panel" comp="learning" title="コード学習ラボ.tsx" Icon={BookOpen} color="text-[#4fc1ff]" />
+                </div>
+              )}
+
+              {/* 2. 初心者向け（トレースを移動） */}
+              <FolderHeader 
+                title="🌱 初心者向け" 
+                isOpen={openFolders.beginner} 
+                onClick={() => toggleFolder('beginner')} 
+              />
+              {openFolders.beginner && (
+                <div className="py-0.5">
+                  <SidebarItem id="trace_panel" comp="trace" title="トレース.tsx" Icon={GitCommit} color="text-[#ce9178]" />
+                  <SidebarItem id="quiz_panel" comp="quiz" title="確認クイズ.tsx" Icon={HelpCircle} color="text-[#569cd6]" />
+                </div>
+              )}
+
+              {/* 3. デザイン */}
+              <FolderHeader 
+                title="🎨 デザイン" 
+                isOpen={openFolders.design} 
+                onClick={() => toggleFolder('design')} 
+              />
+              {openFolders.design && (
+                <div className="py-0.5">
+                  <SidebarItem id="design_panel" comp="design" title="デザイン学習.tsx" Icon={Layout} color="text-[#c586c0]" />
+                  <SidebarItem id="visual_panel" comp="visual" title="ビジュアル学習.tsx" Icon={Eye} color="text-[#dcdcaa]" />
+                </div>
+              )}
+
+              {/* 4. 中級者向け（コードエディタを移動） */}
+              <FolderHeader 
+                title="⚡ 中級者向け" 
+                isOpen={openFolders.intermediate} 
+                onClick={() => toggleFolder('intermediate')} 
+              />
+              {openFolders.intermediate && (
+                <div className="py-0.5">
+                  <SidebarItem id="code_panel" comp="code" title="コードエディタ.tsx" Icon={Code2} color="text-[#4ec9b0]" />
+                  <SidebarItem id="mission_panel" comp="mission" title="ミッション挑戦.tsx" Icon={Target} color="text-[#f48771]" />
+                </div>
+              )}
+
+              {/* 5. WPのこと */}
+              <FolderHeader 
+                title="🌐 WPのこと" 
+                isOpen={openFolders.wp} 
+                onClick={() => toggleFolder('wp')} 
+              />
+              {openFolders.wp && (
+                <div className="py-0.5">
+                  <SidebarItem id="wp_playground_panel" comp="wpPlayground" title="WPプレイグラウンド.tsx" Icon={FileCode} color="text-[#4ec9b0]" />
+                  <SidebarItem id="wp_trace_panel" comp="wpTrace" title="WPコード追跡.tsx" Icon={GitCommit} color="text-[#ce9178]" />
+                </div>
+              )}
+
+              {/* 6. 実践 */}
+              <FolderHeader 
+                title="🔥 実践" 
+                isOpen={openFolders.practice} 
+                onClick={() => toggleFolder('practice')} 
+              />
+              {openFolders.practice && (
+                <div className="py-0.5">
+                  <SidebarItem id="project_panel" comp="project" title="プロジェクト保管.tsx" Icon={Briefcase} color="text-[#d7ba7d]" />
+                  <SidebarItem id="work_panel" comp="work" title="実務ワーク.tsx" Icon={MonitorPlay} color="text-[#9cdcfe]" />
+                </div>
+              )}
+
             </div>
           </div>
         )}
