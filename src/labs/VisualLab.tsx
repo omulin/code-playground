@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Check, Layout, Type, Square, MousePointer, Move } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Check, Layout, Type, Square, MousePointer, Move, Save, RefreshCw } from 'lucide-react';
 
 interface CanvasElement {
   id: string;
@@ -15,25 +15,61 @@ interface CanvasElement {
   width: string;
 }
 
+const INITIAL_ELEMENTS: CanvasElement[] = [
+  { id: '1', type: 'card', text: '✨ 特別キャンペーン実施中！', bg: '#3b82f6', color: '#ffffff', padding: '16px', radius: '12px', x: 20, y: 20, width: '280px' },
+  { id: '2', type: 'heading', text: 'こんにちは、未来のエンジニアへ', bg: 'transparent', color: '#f8fafc', padding: '8px', radius: '0px', x: 20, y: 110, width: '320px' },
+  { id: '3', type: 'paragraph', text: 'カードを自由に重ねてデザインしよう！', bg: 'transparent', color: '#94a3b8', padding: '4px', radius: '0px', x: 20, y: 160, width: '300px' },
+  { id: '4', type: 'button', text: '今すぐ始める ➔', bg: '#10b981', color: '#ffffff', padding: '12px 24px', radius: '8px', x: 20, y: 210, width: '180px' },
+];
+
 export default function VisualLab() {
-  // アートボード上の要素リスト（初期サンプル：座標付き）
-  const [elements, setElements] = useState<CanvasElement[]>([
-    { id: '1', type: 'card', text: '✨ 特別キャンペーン実施中！', bg: '#3b82f6', color: '#ffffff', padding: '16px', radius: '12px', x: 20, y: 20, width: '280px' },
-    { id: '2', type: 'heading', text: 'こんにちは、未来のエンジニアへ', bg: 'transparent', color: '#f8fafc', padding: '8px', radius: '0px', x: 20, y: 110, width: '320px' },
-    { id: '3', type: 'paragraph', text: 'カードを自由に重ねてデザインしよう！', bg: 'transparent', color: '#94a3b8', padding: '4px', radius: '0px', x: 20, y: 160, width: '300px' },
-    { id: '4', type: 'button', text: '今すぐ始める ➔', bg: '#10b981', color: '#ffffff', padding: '12px 24px', radius: '8px', x: 20, y: 210, width: '180px' },
-  ]);
+  // 💡 ローカルストレージからの読み込み、または初期サンプル
+  const [elements, setElements] = useState<CanvasElement[]>(() => {
+    const saved = localStorage.getItem('visual_lab_elements_v1');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return INITIAL_ELEMENTS;
+  });
 
   const [selectedId, setSelectedId] = useState<string>('1');
   const [copied, setCopied] = useState<boolean>(false);
   const [codeTab, setCodeTab] = useState<'html' | 'css'>('html');
+  const [saveNotification, setSaveNotification] = useState<string>('');
 
   // ドラッグ移動用の状態
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // 💡 要素が変更されたときに選択IDの整合性を保つ
+  useEffect(() => {
+    if (elements.length > 0 && !elements.some(el => el.id === selectedId)) {
+      setSelectedId(elements[0].id);
+    } else if (elements.length === 0) {
+      setSelectedId('');
+    }
+  }, [elements]);
+
   // 安全に選択中要素を取得
   const selectedElement = elements.find(el => el.id === selectedId) || null;
+
+  // 💡 手動一時保存処理
+  const handleManualSave = () => {
+    localStorage.setItem('visual_lab_elements_v1', JSON.stringify(elements));
+    setSaveNotification("💾 セーブしました！");
+    setTimeout(() => setSaveNotification(""), 2500);
+  };
+
+  // 💡 初期化・リセット処理
+  const handleReset = () => {
+    if (window.confirm("🚨 レイアウトを初期状態に戻しますか？")) {
+      localStorage.removeItem('visual_lab_elements_v1');
+      setElements(INITIAL_ELEMENTS);
+      setSelectedId('1');
+      setSaveNotification("🗑️ 初期化しました");
+      setTimeout(() => setSaveNotification(""), 2500);
+    }
+  };
 
   // 要素の追加
   const handleAddElement = (type: CanvasElement['type']) => {
@@ -193,10 +229,34 @@ export default function VisualLab() {
       
       {/* 🎨 左カラム：ツール＆パーツ追加パネル */}
       <div className="w-64 bg-[#252526] border-r border-[#3c3c3c] flex flex-col shrink-0 select-none">
-        <div className="p-3 bg-[#2d2d2d] border-b border-[#3c3c3c] flex items-center gap-2 text-xs font-bold text-indigo-300">
-          <Layout size={16} className="text-indigo-400" />
-          <span>ビジュアル・ツールボックス</span>
+        <div className="p-3 bg-[#2d2d2d] border-b border-[#3c3c3c] flex items-center justify-between text-xs font-bold text-indigo-300">
+          <div className="flex items-center gap-2">
+            <Layout size={16} className="text-indigo-400" />
+            <span>ツールボックス</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleManualSave}
+              className="flex items-center gap-1 bg-[#1e293b] hover:bg-[#334155] border border-indigo-500/50 text-indigo-200 px-2 py-1 rounded-[4px] text-[11px] cursor-pointer transition-colors"
+              title="セーブ"
+            >
+              <Save size={11} /> セーブ
+            </button>
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1 bg-rose-950/50 hover:bg-rose-900 border border-rose-500/50 text-rose-200 px-2 py-1 rounded-[4px] text-[11px] cursor-pointer transition-colors"
+              title="初期化"
+            >
+              <RefreshCw size={11} /> 初期化
+            </button>
+          </div>
         </div>
+
+        {saveNotification && (
+          <div className="bg-emerald-950/80 text-emerald-400 text-[11px] font-bold py-1 px-3 text-center border-b border-emerald-900 animate-pulse">
+            {saveNotification}
+          </div>
+        )}
 
         <div className="p-4 space-y-4 overflow-y-auto flex-1">
           <div>

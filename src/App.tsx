@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
-import { HelpCircle, Code2, GitCommit, Eye, Settings, FileCode, MonitorPlay, Target, BookOpen, Briefcase, Layout, ChevronDown, ChevronRight, Folder } from 'lucide-react';
+import { HelpCircle, Code2, GitCommit, Eye, Settings, FileCode, MonitorPlay, Target, BookOpen, Briefcase, Layout, ChevronDown, ChevronRight, Folder, Link2, Sparkles } from 'lucide-react';
 
 // 各Labのインポート
 import QuizLab from './labs/QuizLab';
@@ -15,6 +15,7 @@ import ProjectLab from './labs/ProjectLab';
 import WorkLab from './labs/WorkLab';
 import WpPlaygroundLab from './labs/WpPlaygroundLab';
 import WpTraceLab from './labs/WpTraceLab';
+import ConnectionLab from './labs/ConnectionLab';
 
 // パネルに表示するコンポーネントの登録
 const components = {
@@ -29,13 +30,14 @@ const components = {
   work: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WorkLab /></div>,
   wpPlayground: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WpPlaygroundLab /></div>,
   wpTrace: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WpTraceLab /></div>,
+  connection: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><ConnectionLab /></div>,
 };
 
 export default function App() {
   const [api, setApi] = useState<DockviewReadyEvent['api']>();
   const [activeMenu, setActiveMenu] = useState('explorer');
 
-  // カテゴリフォルダの開閉状態
+  // カテゴリフォルダの開閉状態（新規フォルダ用を追加）
   const [openFolders, setOpenFolders] = useState({
     beginnerNew: true,
     beginner: true,
@@ -51,7 +53,8 @@ export default function App() {
 
   const onReady = (event: DockviewReadyEvent) => {
     setApi(event.api);
-    event.api.addPanel({ id: 'learning_panel', component: 'learning', title: 'コード学習ラボ.tsx' });
+    // 初回起動時は直感的に学べる接続ラボをデフォルト表示
+    event.api.addPanel({ id: 'connection_panel', component: 'connection', title: '構造とデザイン接続.tsx' });
   };
 
   const openFile = (id: string, component: string, title: string) => {
@@ -114,19 +117,19 @@ export default function App() {
             
             <div className="flex-1 py-2 overflow-y-auto">
               
-              {/* 1. 始めたばかりの人向け */}
+              {/* 🌟 0. 始めたばかりの人・触ったことない人向け（新設） */}
               <FolderHeader 
-                title="🚀 始めたばかりの人向け" 
+                title="✨ 始めたばかりの人向け" 
                 isOpen={openFolders.beginnerNew} 
                 onClick={() => toggleFolder('beginnerNew')} 
               />
               {openFolders.beginnerNew && (
                 <div className="py-0.5">
-                  <SidebarItem id="learning_panel" comp="learning" title="コード学習ラボ.tsx" Icon={BookOpen} color="text-[#4fc1ff]" />
+                  <SidebarItem id="connection_panel" comp="connection" title="構造とデザイン接続.tsx" Icon={Link2} color="text-[#3b82f6]" />
                 </div>
               )}
 
-              {/* 2. 初心者向け（トレースを移動） */}
+              {/* 1. 初心者向け */}
               <FolderHeader 
                 title="🌱 初心者向け" 
                 isOpen={openFolders.beginner} 
@@ -134,12 +137,13 @@ export default function App() {
               />
               {openFolders.beginner && (
                 <div className="py-0.5">
+                  <SidebarItem id="learning_panel" comp="learning" title="コード学習ラボ.tsx" Icon={BookOpen} color="text-[#4fc1ff]" />
                   <SidebarItem id="trace_panel" comp="trace" title="トレース.tsx" Icon={GitCommit} color="text-[#ce9178]" />
                   <SidebarItem id="quiz_panel" comp="quiz" title="確認クイズ.tsx" Icon={HelpCircle} color="text-[#569cd6]" />
                 </div>
               )}
 
-              {/* 3. デザイン */}
+              {/* 2. デザイン */}
               <FolderHeader 
                 title="🎨 デザイン" 
                 isOpen={openFolders.design} 
@@ -152,7 +156,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* 4. 中級者向け（コードエディタを移動） */}
+              {/* 3. 中級者向け */}
               <FolderHeader 
                 title="⚡ 中級者向け" 
                 isOpen={openFolders.intermediate} 
@@ -165,7 +169,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* 5. WPのこと */}
+              {/* 4. WPのこと */}
               <FolderHeader 
                 title="🌐 WPのこと" 
                 isOpen={openFolders.wp} 
@@ -178,7 +182,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* 6. 実践 */}
+              {/* 5. 実践 */}
               <FolderHeader 
                 title="🔥 実践" 
                 isOpen={openFolders.practice} 
