@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Check, Layout, Type, Square, MousePointer, Move, Save, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Check, Layout, Type, Square, MousePointer, Move, Save, RefreshCw, Sliders } from 'lucide-react';
 
 interface CanvasElement {
   id: string;
@@ -13,19 +13,93 @@ interface CanvasElement {
   x: number;
   y: number;
   width: string;
+  // 🌟 CSS道場で学ぶプロパティを追加
+  boxShadow: string;
+  border: string;
+  display: 'block' | 'flex';
+  justifyContent: 'flex-start' | 'center' | 'space-between' | 'space-around';
+  alignItems: 'flex-start' | 'center';
+  gap: string;
 }
 
 const INITIAL_ELEMENTS: CanvasElement[] = [
-  { id: '1', type: 'card', text: '✨ 特別キャンペーン実施中！', bg: '#3b82f6', color: '#ffffff', padding: '16px', radius: '12px', x: 20, y: 20, width: '280px' },
-  { id: '2', type: 'heading', text: 'こんにちは、未来のエンジニアへ', bg: 'transparent', color: '#f8fafc', padding: '8px', radius: '0px', x: 20, y: 110, width: '320px' },
-  { id: '3', type: 'paragraph', text: 'カードを自由に重ねてデザインしよう！', bg: 'transparent', color: '#94a3b8', padding: '4px', radius: '0px', x: 20, y: 160, width: '300px' },
-  { id: '4', type: 'button', text: '今すぐ始める ➔', bg: '#10b981', color: '#ffffff', padding: '12px 24px', radius: '8px', x: 20, y: 210, width: '180px' },
+  { 
+    id: '1', 
+    type: 'card', 
+    text: '✨ 特別キャンペーン実施中！', 
+    bg: '#3b82f6', 
+    color: '#ffffff', 
+    padding: '20px', 
+    radius: '16px', 
+    x: 30, 
+    y: 30, 
+    width: '320px',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+    border: 'none',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  { 
+    id: '2', 
+    type: 'heading', 
+    text: 'こんにちは、未来のエンジニアへ', 
+    bg: 'transparent', 
+    color: '#f8fafc', 
+    padding: '8px', 
+    radius: '0px', 
+    x: 30, 
+    y: 160, 
+    width: '340px',
+    boxShadow: 'none',
+    border: 'none',
+    display: 'block',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    gap: '0px'
+  },
+  { 
+    id: '3', 
+    type: 'paragraph', 
+    text: 'カードを自由に重ねて、CSSの仕組みを視覚的に学ぼう！', 
+    bg: 'transparent', 
+    color: '#94a3b8', 
+    padding: '4px', 
+    radius: '0px', 
+    x: 30, 
+    y: 220, 
+    width: '320px',
+    boxShadow: 'none',
+    border: 'none',
+    display: 'block',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    gap: '0px'
+  },
+  { 
+    id: '4', 
+    type: 'button', 
+    text: '今すぐ始める ➔', 
+    bg: '#10b981', 
+    color: '#ffffff', 
+    padding: '12px 24px', 
+    radius: '8px', 
+    x: 30, 
+    y: 290, 
+    width: '180px',
+    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+    border: 'none',
+    display: 'block',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    gap: '0px'
+  },
 ];
 
 export default function VisualLab() {
-  // 💡 ローカルストレージからの読み込み、または初期サンプル
   const [elements, setElements] = useState<CanvasElement[]>(() => {
-    const saved = localStorage.getItem('visual_lab_elements_v1');
+    const saved = localStorage.getItem('visual_lab_elements_v2');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
@@ -37,11 +111,9 @@ export default function VisualLab() {
   const [codeTab, setCodeTab] = useState<'html' | 'css'>('html');
   const [saveNotification, setSaveNotification] = useState<string>('');
 
-  // ドラッグ移動用の状態
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // 💡 要素が変更されたときに選択IDの整合性を保つ
   useEffect(() => {
     if (elements.length > 0 && !elements.some(el => el.id === selectedId)) {
       setSelectedId(elements[0].id);
@@ -50,20 +122,17 @@ export default function VisualLab() {
     }
   }, [elements]);
 
-  // 安全に選択中要素を取得
   const selectedElement = elements.find(el => el.id === selectedId) || null;
 
-  // 💡 手動一時保存処理
   const handleManualSave = () => {
-    localStorage.setItem('visual_lab_elements_v1', JSON.stringify(elements));
+    localStorage.setItem('visual_lab_elements_v2', JSON.stringify(elements));
     setSaveNotification("💾 セーブしました！");
     setTimeout(() => setSaveNotification(""), 2500);
   };
 
-  // 💡 初期化・リセット処理
   const handleReset = () => {
     if (window.confirm("🚨 レイアウトを初期状態に戻しますか？")) {
-      localStorage.removeItem('visual_lab_elements_v1');
+      localStorage.removeItem('visual_lab_elements_v2');
       setElements(INITIAL_ELEMENTS);
       setSelectedId('1');
       setSaveNotification("🗑️ 初期化しました");
@@ -71,29 +140,30 @@ export default function VisualLab() {
     }
   };
 
-  // 要素の追加
   const handleAddElement = (type: CanvasElement['type']) => {
     const newId = Date.now().toString();
     let defaultText = '新しいテキスト';
     let defaultBg = '#1e293b';
     let defaultColor = '#ffffff';
-    let defaultPadding = '12px';
+    let defaultPadding = '16px';
     let defaultRadius = '8px';
-    let defaultWidth = '240px';
+    let defaultWidth = '260px';
+    let defaultShadow = '0 8px 20px rgba(0,0,0,0.2)';
 
     if (type === 'heading') {
       defaultText = '新しい見出し';
       defaultBg = 'transparent';
       defaultColor = '#ffffff';
       defaultWidth = '300px';
+      defaultShadow = 'none';
     } else if (type === 'button') {
       defaultText = 'ボタン';
       defaultBg = '#6366f1';
-      defaultWidth = '140px';
+      defaultWidth = '150px';
     } else if (type === 'card') {
-      defaultText = 'カードのコンテンツです。';
+      defaultText = 'カードコンテンツ';
       defaultBg = '#334155';
-      defaultWidth = '260px';
+      defaultWidth = '280px';
     }
 
     const newEl: CanvasElement = {
@@ -107,13 +177,18 @@ export default function VisualLab() {
       x: 40 + (elements.length * 15) % 150,
       y: 40 + (elements.length * 15) % 150,
       width: defaultWidth,
+      boxShadow: defaultShadow,
+      border: 'none',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '8px'
     };
 
     setElements([...elements, newEl]);
     setSelectedId(newId);
   };
 
-  // 選択中要素のプロパティ更新
   const handleUpdateSelected = (key: keyof CanvasElement, value: any) => {
     if (!selectedElement) return;
     setElements(elements.map(el => {
@@ -124,7 +199,6 @@ export default function VisualLab() {
     }));
   };
 
-  // 削除
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const filtered = elements.filter(el => el.id !== id);
@@ -134,7 +208,6 @@ export default function VisualLab() {
     }
   };
 
-  // レイヤーの重なり順（上下）の入れ替え
   const handleMoveOrder = (index: number, direction: 'up' | 'down') => {
     const newElements = [...elements];
     const targetIdx = direction === 'up' ? index + 1 : index - 1;
@@ -145,7 +218,6 @@ export default function VisualLab() {
     setElements(newElements);
   };
 
-  // マウスドラッグによる自由配置
   const handleMouseDown = (e: React.MouseEvent, el: CanvasElement) => {
     e.stopPropagation();
     setSelectedId(el.id);
@@ -180,7 +252,6 @@ export default function VisualLab() {
     setDraggingId(null);
   };
 
-  // HTML / CSSコードの自動生成
   const generateCode = () => {
     let htmlContent = '<div class="artboard">\n';
     let cssContent = '.artboard {\n  position: relative;\n  width: 100%;\n  height: 500px;\n  background: #ffffff;\n  font-family: sans-serif;\n  overflow: hidden;\n}\n\n';
@@ -194,7 +265,7 @@ export default function VisualLab() {
       } else if (el.type === 'button') {
         htmlContent += `  <button class="${className}">${el.text}</button>\n`;
       } else if (el.type === 'card') {
-        htmlContent += `  <div class="${className}">\n    <p>${el.text}</p>\n  </div>\n`;
+        htmlContent += `  <div class="${className}">\n    <span>${el.text}</span>\n  </div>\n`;
       }
 
       cssContent += `.${className} {\n`;
@@ -206,7 +277,17 @@ export default function VisualLab() {
       cssContent += `  color: ${el.color};\n`;
       cssContent += `  padding: ${el.padding};\n`;
       if (el.radius !== '0px') cssContent += `  border-radius: ${el.radius};\n`;
-      if (el.type === 'button') cssContent += `  border: none; cursor: pointer; font-weight: bold;\n`;
+      if (el.border !== 'none') cssContent += `  border: ${el.border};\n`;
+      if (el.boxShadow !== 'none') cssContent += `  box-shadow: ${el.boxShadow};\n`;
+      
+      if (el.display === 'flex') {
+        cssContent += `  display: flex;\n`;
+        cssContent += `  justify-content: ${el.justifyContent};\n`;
+        cssContent += `  align-items: ${el.alignItems};\n`;
+        if (el.gap !== '0px') cssContent += `  gap: ${el.gap};\n`;
+      }
+
+      if (el.type === 'button') cssContent += `  cursor: pointer; font-weight: bold;\n`;
       cssContent += `  z-index: ${idx + 1};\n`;
       cssContent += `}\n\n`;
     });
@@ -346,6 +427,12 @@ export default function VisualLab() {
                       color: el.color,
                       padding: el.padding,
                       borderRadius: el.radius,
+                      boxShadow: el.boxShadow,
+                      border: el.border,
+                      display: el.display,
+                      justifyContent: el.justifyContent,
+                      alignItems: el.alignItems,
+                      gap: el.gap,
                       zIndex: idx + 1,
                     }}
                     className={`cursor-move transition-shadow ${
@@ -355,7 +442,12 @@ export default function VisualLab() {
                     {el.type === 'heading' && <h2 className="text-xl font-black pointer-events-none">{el.text}</h2>}
                     {el.type === 'paragraph' && <p className="text-sm pointer-events-none">{el.text}</p>}
                     {el.type === 'button' && <button className="font-bold w-full text-center pointer-events-none">{el.text}</button>}
-                    {el.type === 'card' && <p className="text-sm font-medium pointer-events-none">{el.text}</p>}
+                    {el.type === 'card' && (
+                      <>
+                        <span className="text-sm font-medium pointer-events-none">{el.text}</span>
+                        <span className="text-xs opacity-80 pointer-events-none">➔</span>
+                      </>
+                    )}
                   </div>
                 );
               })
@@ -364,20 +456,20 @@ export default function VisualLab() {
         </div>
       </div>
 
-      {/* ⚙️ 右カラム：プロパティ ＆ タブ付きコード出力 */}
-      <div className="w-96 bg-[#252526] flex flex-col h-full shrink-0">
+      {/* ⚙️ 右カラム：プロパティ ＆ CSS学習用詳細設定 ＆ タブ付きコード出力 */}
+      <div className="w-[420px] bg-[#252526] flex flex-col h-full shrink-0">
         
         {/* 選択パーツの詳細プロパティ編集 */}
-        <div className="p-4 border-b border-[#3c3c3c] bg-[#2d2d2d] shrink-0">
+        <div className="p-4 border-b border-[#3c3c3c] bg-[#2d2d2d] overflow-y-auto max-h-[360px] shrink-0">
           <div className="text-xs font-bold text-amber-400 mb-3 flex items-center justify-between">
-            <span>✏️ プロパティ設定</span>
+            <span className="flex items-center gap-1.5"><Sliders size={14} /> CSSプロパティ学習設定</span>
             <span className="text-[10px] text-gray-400 font-mono">
               {selectedElement ? `ID: ${selectedId}` : '未選択'}
             </span>
           </div>
 
           {selectedElement ? (
-            <div className="space-y-3">
+            <div className="space-y-3 text-xs">
               <div>
                 <label className="text-[10px] text-gray-400 font-bold block mb-1">表示テキスト</label>
                 <input
@@ -420,7 +512,7 @@ export default function VisualLab() {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 font-bold block mb-1">角丸 (radius)</label>
+                  <label className="text-[10px] text-gray-400 font-bold block mb-1">角丸 (border-radius)</label>
                   <input
                     type="text"
                     value={selectedElement.radius}
@@ -428,6 +520,81 @@ export default function VisualLab() {
                     className="w-full bg-[#1e1e1e] border border-[#444] px-3 py-1.5 rounded text-xs text-white outline-none font-mono"
                   />
                 </div>
+              </div>
+
+              {/* 🌟 CSS道場プロパティ：影 (box-shadow) と枠線 (border) */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-400 font-bold block mb-1">影 (box-shadow)</label>
+                  <input
+                    type="text"
+                    value={selectedElement.boxShadow}
+                    onChange={(e) => handleUpdateSelected('boxShadow', e.target.value)}
+                    className="w-full bg-[#1e1e1e] border border-[#444] px-3 py-1.5 rounded text-xs text-white outline-none font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 font-bold block mb-1">枠線 (border)</label>
+                  <input
+                    type="text"
+                    value={selectedElement.border}
+                    onChange={(e) => handleUpdateSelected('border', e.target.value)}
+                    className="w-full bg-[#1e1e1e] border border-[#444] px-3 py-1.5 rounded text-xs text-white outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* 🌟 CSS道場プロパティ：Flexbox & 均等配置設定 */}
+              <div className="bg-[#1e1e1e] p-2.5 rounded border border-[#444] space-y-2">
+                <div className="font-bold text-indigo-400 flex items-center justify-between">
+                  <span>フレックスボックス (Flexbox)</span>
+                  <select
+                    value={selectedElement.display}
+                    onChange={(e) => handleUpdateSelected('display', e.target.value)}
+                    className="bg-[#252526] text-white px-2 py-0.5 rounded text-[10px] border border-[#555] cursor-pointer"
+                  >
+                    <option value="block">display: block</option>
+                    <option value="flex">display: flex</option>
+                  </select>
+                </div>
+
+                {selectedElement.display === 'flex' && (
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <div>
+                      <label className="text-[9px] text-gray-400 block mb-0.5">均等・左右(justify)</label>
+                      <select
+                        value={selectedElement.justifyContent}
+                        onChange={(e) => handleUpdateSelected('justifyContent', e.target.value)}
+                        className="w-full bg-[#252526] text-white px-1.5 py-1 rounded text-[10px] border border-[#555] cursor-pointer"
+                      >
+                        <option value="flex-start">flex-start</option>
+                        <option value="center">center</option>
+                        <option value="space-between">space-between</option>
+                        <option value="space-around">space-around</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-gray-400 block mb-0.5">縦中央(align)</label>
+                      <select
+                        value={selectedElement.alignItems}
+                        onChange={(e) => handleUpdateSelected('alignItems', e.target.value)}
+                        className="w-full bg-[#252526] text-white px-1.5 py-1 rounded text-[10px] border border-[#555] cursor-pointer"
+                      >
+                        <option value="flex-start">flex-start</option>
+                        <option value="center">center</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-gray-400 block mb-0.5">隙間(gap)</label>
+                      <input
+                        type="text"
+                        value={selectedElement.gap}
+                        onChange={(e) => handleUpdateSelected('gap', e.target.value)}
+                        className="w-full bg-[#252526] text-white px-1.5 py-1 rounded text-[10px] border border-[#555] font-mono text-center"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">

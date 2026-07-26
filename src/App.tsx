@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
-import { HelpCircle, Code2, GitCommit, Eye, Settings, FileCode, MonitorPlay, Target, BookOpen, Briefcase, Layout, ChevronDown, ChevronRight, Folder, Link2, Sparkles } from 'lucide-react';
+import { HelpCircle, Code2, GitCommit, Eye, Settings, FileCode, MonitorPlay, Target, BookOpen, Briefcase, Layout, ChevronDown, ChevronRight, Folder, Link2, Award } from 'lucide-react';
 
 // 各Labのインポート
 import QuizLab from './labs/QuizLab';
@@ -16,6 +16,8 @@ import WorkLab from './labs/WorkLab';
 import WpPlaygroundLab from './labs/WpPlaygroundLab';
 import WpTraceLab from './labs/WpTraceLab';
 import ConnectionLab from './labs/ConnectionLab';
+import CSSLab from './labs/CSSLab';
+import HtmlLab from './labs/HtmlLab'; // 👈 追加：HTML道場
 
 // パネルに表示するコンポーネントの登録
 const components = {
@@ -31,13 +33,15 @@ const components = {
   wpPlayground: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WpPlaygroundLab /></div>,
   wpTrace: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><WpTraceLab /></div>,
   connection: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><ConnectionLab /></div>,
+  css: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><CSSLab /></div>,
+  html: (props: IDockviewPanelProps) => <div className="h-full overflow-auto"><HtmlLab /></div>, // 👈 追加
 };
 
 export default function App() {
   const [api, setApi] = useState<DockviewReadyEvent['api']>();
   const [activeMenu, setActiveMenu] = useState('explorer');
 
-  // カテゴリフォルダの開閉状態（新規フォルダ用を追加）
+  // カテゴリフォルダの開閉状態
   const [openFolders, setOpenFolders] = useState({
     beginnerNew: true,
     beginner: true,
@@ -53,8 +57,8 @@ export default function App() {
 
   const onReady = (event: DockviewReadyEvent) => {
     setApi(event.api);
-    // 初回起動時は直感的に学べる接続ラボをデフォルト表示
-    event.api.addPanel({ id: 'connection_panel', component: 'connection', title: '構造とデザイン接続.tsx' });
+    // 初回起動時はCSS道場またはHTML道場などをデフォルト表示
+    event.api.addPanel({ id: 'css_panel', component: 'css', title: 'CSS道場(AOJ風).tsx' });
   };
 
   const openFile = (id: string, component: string, title: string) => {
@@ -117,7 +121,7 @@ export default function App() {
             
             <div className="flex-1 py-2 overflow-y-auto">
               
-              {/* 🌟 0. 始めたばかりの人・触ったことない人向け（新設） */}
+              {/* 🌟 0. 始めたばかりの人・触ったことない人向け */}
               <FolderHeader 
                 title="✨ 始めたばかりの人向け" 
                 isOpen={openFolders.beginnerNew} 
@@ -156,7 +160,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* 3. 中級者向け */}
+              {/* 3. 中級者向け（ここにCSS道場とHTML道場を配置） */}
               <FolderHeader 
                 title="⚡ 中級者向け" 
                 isOpen={openFolders.intermediate} 
@@ -164,7 +168,8 @@ export default function App() {
               />
               {openFolders.intermediate && (
                 <div className="py-0.5">
-                  <SidebarItem id="code_panel" comp="code" title="コードエディタ.tsx" Icon={Code2} color="text-[#4ec9b0]" />
+                  <SidebarItem id="css_panel" comp="css" title="CSS道場.tsx" Icon={Award} color="text-[#f59e0b]" />
+                  <SidebarItem id="html_panel" comp="html" title="HTML道場.tsx" Icon={FileCode} color="text-[#ea580c]" />
                   <SidebarItem id="mission_panel" comp="mission" title="ミッション挑戦.tsx" Icon={Target} color="text-[#f48771]" />
                 </div>
               )}
@@ -182,7 +187,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* 5. 実践 */}
+              {/* 5. 実践（ここにCodeLabを移動） */}
               <FolderHeader 
                 title="🔥 実践" 
                 isOpen={openFolders.practice} 
@@ -190,6 +195,7 @@ export default function App() {
               />
               {openFolders.practice && (
                 <div className="py-0.5">
+                  <SidebarItem id="code_panel" comp="code" title="コードエディタ(アルゴリズム).tsx" Icon={Code2} color="text-[#4ec9b0]" />
                   <SidebarItem id="project_panel" comp="project" title="プロジェクト保管.tsx" Icon={Briefcase} color="text-[#d7ba7d]" />
                   <SidebarItem id="work_panel" comp="work" title="実務ワーク.tsx" Icon={MonitorPlay} color="text-[#9cdcfe]" />
                 </div>
