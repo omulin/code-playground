@@ -593,9 +593,9 @@ const HTML_STAGES: HtmlStage[] = [
   {
     id: 40,
     title: `ステージ 40：【最終試練】実務Webページの完全なフルマークアップ`,
-    mission: `DOCTYPE宣言からhead(meta, title, link)、body(header, nav, main(article), aside, footer, script)までを組み合わせた実務レベルの完全なHTML構造を構築しよう！`,
+    mission: `DOCTYPE宣言からhead(meta, title, link), body(header, nav, main(article), aside, footer, script)までを組み合わせた実務レベルの完全なHTML構造を構築しよう！`,
     hint: `これまでの総集編です。正しい親子関係で構築します。`,
-    initialCode: `<div>制作物</div>`,
+    initialCode: ``,
     correctCode: `<!DOCTYPE html>
 <html>
 <head>
@@ -623,7 +623,12 @@ const HTML_STAGES: HtmlStage[] = [
   }
 ];
 
-export default function HtmlLab() {
+export interface HtmlLabProps {
+  isPreviewOnly?: boolean;
+  isPreviewHidden?: boolean;
+}
+
+export default function HtmlLab({ isPreviewOnly = false, isPreviewHidden = false }: HtmlLabProps) {
   const [currentStageIdx, setCurrentStageIdx] = useState<number>(0);
   const stage = HTML_STAGES[currentStageIdx] || HTML_STAGES[0];
 
@@ -641,28 +646,89 @@ export default function HtmlLab() {
 
   useEffect(() => {
     const saved = localStorage.getItem(`html_lab_stage_${stage.id}_code`);
-    setUserCode(saved || stage.initialCode);
-    checkPass(saved || stage.initialCode, false);
+    const initial = saved || stage.initialCode;
+    setUserCode(initial);
+    setIsPassed(false); // ステージ変更時は未判定状態に戻す
     setShowHintModal(false);
     setShowAnswerModal(false);
-  }, [currentStageIdx]);
+  }, [currentStageIdx, stage]);
 
-  const checkPass = (code: string, triggerPopup = true) => {
-    const passed = stage.checkCondition(code);
+  // 💡 リアルタイム同期ロジック（プレビューへの反映のみ）
+  useEffect(() => {
+    if (!isPreviewOnly) {
+      localStorage.setItem(`html_lab_stage_${stage.id}_sync_code`, userCode);
+    }
+  }, [userCode, isPreviewOnly, stage.id]);
+
+  useEffect(() => {
+    if (isPreviewOnly) {
+      const synced = localStorage.getItem(`html_lab_stage_${stage.id}_sync_code`);
+      if (synced !== null) setUserCode(synced);
+
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === `html_lab_stage_${stage.id}_sync_code` && e.newValue !== null) {
+          setUserCode(e.newValue);
+        }
+      };
+      window.addEventListener('storage', handleStorage);
+      return () => window.removeEventListener('storage', handleStorage);
+    }
+  }, [isPreviewOnly, stage.id]);
+
+  // 💡 「コードを判定する」ボタンを押したときの処理
+  const handleManualCheck = () => {
+    const passed = stage.checkCondition(userCode);
     if (passed) {
-      if (!isPassed && triggerPopup) {
+      setIsPassed(true);
+      if (!isPreviewOnly) {
         setShowModal(true);
       }
-      setIsPassed(true);
     } else {
       setIsPassed(false);
+      alert("❌ まだ条件を満たしていません。コードやヒントを確認してください。");
     }
   };
 
   const handleEditorChange = (val: string | undefined) => {
-    const code = val || '';
-    setUserCode(code);
-    checkPass(code, true);
+    setUserCode(val || '');
+  };
+
+  // 💡 自動タグ閉じ（`>` を入力した時に自動で `</tag>` を挿入する）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    editor.onDidChangeModelContent((e: any) => {
+      const model = editor.getModel();
+      if (!model) return;
+
+      const changes = e.changes[0];
+      if (changes && changes.text === '>') {
+        const position = editor.getPosition();
+        if (!position) return;
+
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column
+        });
+        
+        const match = textUntilPosition.match(/<([a-zA-Z0-9\-]+)[^>]*>$/);
+        const voidElements = ['br', 'img', 'input', 'hr', 'meta', 'link'];
+        
+        if (match && !voidElements.includes(match[1]) && monaco?.Range) {
+          const tag = match[1];
+          editor.executeEdits("auto-close", [
+            {
+              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+              text: `</${tag}>`,
+              forceMoveMarkers: true
+            }
+          ]);
+          editor.setPosition(position);
+        }
+      }
+    });
   };
 
   const handleSave = () => {
@@ -675,7 +741,7 @@ export default function HtmlLab() {
     if (window.confirm("このステージのコードを初期状態に戻しますか？")) {
       localStorage.removeItem(storageKey);
       setUserCode(stage.initialCode);
-      checkPass(stage.initialCode, false);
+      setIsPassed(false);
       setSaveNotification("🗑️ 初期化しました");
       setTimeout(() => setSaveNotification(""), 2000);
     }
@@ -686,6 +752,28 @@ export default function HtmlLab() {
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
+
+  // 🚀 ポップアップ（プレビュー専用）モードの場合
+  if (isPreviewOnly) {
+    return (
+      <div className="flex flex-col h-full w-full bg-[#141414] text-white">
+        <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
+          <span className="flex items-center gap-1.5 font-mono">🌐 LIVE PREVIEW MONITOR (HTML DOJO)</span>
+          <span className="text-[9px] bg-emerald-600/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 animate-pulse">
+            リアルタイム同期中
+          </span>
+        </div>
+        <div className="flex-1 bg-white p-4 overflow-auto">
+          <iframe
+            srcDoc={userCode}
+            title="User Preview"
+            className="w-full h-full border-0"
+            sandbox="allow-same-origin"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full bg-[#1e1e1e] text-white font-sans overflow-hidden relative">
@@ -844,15 +932,21 @@ export default function HtmlLab() {
             </button>
           </div>
 
-          <div className="border-t border-[#3c3c3c] pt-3">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">判定ステータス</span>
+          <div className="border-t border-[#3c3c3c] pt-3 space-y-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">判定ステータス</span>
+            <button
+              onClick={handleManualCheck}
+              className="w-full py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+            >
+              <CheckCircle2 size={15} /> コードを判定する
+            </button>
             {isPassed ? (
               <div className="bg-emerald-950/60 border border-emerald-800 text-emerald-400 p-3 rounded-lg flex items-center gap-2 font-bold animate-pulse">
                 <CheckCircle2 size={18} /> Accepted (AC) - 合格！
               </div>
             ) : (
               <div className="bg-amber-950/40 border border-amber-800/60 text-amber-400 p-3 rounded-lg flex items-center gap-2 font-bold">
-                ✍️ Writing Code... (要件未達)
+                ✍️ 未判定 / 要件未達
               </div>
             )}
           </div>
@@ -860,7 +954,7 @@ export default function HtmlLab() {
       </div>
 
       {/* 💻 中央カラム：HTMLエディタ */}
-      <div className="w-[420px] bg-[#252526] flex flex-col h-full border-r border-[#3c3c3c] shrink-0">
+      <div className={`flex flex-col h-full border-r border-[#3c3c3c] shrink-0 bg-[#252526] ${isPreviewHidden ? 'flex-1' : 'w-[420px]'}`}>
         <div className="bg-[#2d2d2d] border-b border-[#3c3c3c] px-4 py-2 text-xs font-bold text-orange-400 flex justify-between items-center">
           <span>✍️ HTML Editor (index.html)</span>
           <span className="text-[10px] text-gray-400 font-mono">Monaco Editor</span>
@@ -872,54 +966,61 @@ export default function HtmlLab() {
             theme="vs-dark"
             value={userCode}
             onChange={handleEditorChange}
+            onMount={handleEditorDidMount}
             options={{
               fontSize: 12,
               minimap: { enabled: false },
               wordWrap: 'on',
+              autoClosingBrackets: 'always',
+              autoClosingQuotes: 'always',
+              formatOnType: true,
+              formatOnPaste: true,
             }}
           />
         </div>
       </div>
 
-      {/* 🖼️ 右カラム：ターゲットお手本 ＆ ライブプレビュー比較 */}
-      <div className="flex-1 bg-[#141414] flex flex-col h-full overflow-hidden">
-        <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
-          <span>👀 ターゲット (お手本) ＆ プレビュー比較</span>
-          <span className="text-[10px] text-orange-400 font-mono">HTML Live Judge</span>
-        </div>
-
-        <div className="flex-1 p-6 grid grid-rows-2 gap-4 bg-[#1a1a1a] overflow-auto">
-          {/* お手本プレビュー */}
-          <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
-            <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
-              ✨ ターゲット（目指すレンダリング）
-            </div>
-            <div className="flex-1 bg-white p-4 overflow-auto">
-              <iframe
-                srcDoc={stage.correctCode}
-                title="Target Preview"
-                className="w-full h-full border-0 pointer-events-none"
-                sandbox="allow-same-origin"
-              />
-            </div>
+      {/* 🖼️ 右カラム：ターゲットお手本 ＆ ライブプレビュー比較（※ isPreviewHidden が true の時は消える！） */}
+      {!isPreviewHidden && (
+        <div className="flex-1 bg-[#141414] flex flex-col h-full overflow-hidden">
+          <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
+            <span>👀 ターゲット (お手本) ＆ プレビュー比較</span>
+            <span className="text-[10px] text-orange-400 font-mono">HTML Live Judge</span>
           </div>
 
-          {/* ユーザープレビュー */}
-          <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
-            <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
-              🖥️ あなたのプレビュー結果
+          <div className="flex-1 p-6 grid grid-rows-2 gap-4 bg-[#1a1a1a] overflow-auto">
+            {/* お手本プレビュー */}
+            <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
+              <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
+                ✨ ターゲット（目指すレンダリング）
+              </div>
+              <div className="flex-1 bg-white p-4 overflow-auto">
+                <iframe
+                  srcDoc={stage.correctCode}
+                  title="Target Preview"
+                  className="w-full h-full border-0 pointer-events-none"
+                  sandbox="allow-same-origin"
+                />
+              </div>
             </div>
-            <div className="flex-1 bg-white p-4 overflow-auto">
-              <iframe
-                srcDoc={userCode}
-                title="User Preview"
-                className="w-full h-full border-0"
-                sandbox="allow-same-origin"
-              />
+
+            {/* ユーザープレビュー */}
+            <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
+              <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
+                🖥️ あなたのプレビュー結果
+              </div>
+              <div className="flex-1 bg-white p-4 overflow-auto">
+                <iframe
+                  srcDoc={userCode}
+                  title="User Preview"
+                  className="w-full h-full border-0"
+                  sandbox="allow-same-origin"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
     </div>
   );

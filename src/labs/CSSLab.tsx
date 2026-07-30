@@ -417,7 +417,12 @@ const CSS_STAGES: CssStage[] = [
   }
 ];
 
-export default function CSSLab() {
+export interface CssLabProps {
+  isPreviewOnly?: boolean;
+  isPreviewHidden?: boolean;
+}
+
+export default function CSSLab({ isPreviewOnly = false, isPreviewHidden = false }: CssLabProps) {
   const [currentStageIdx, setCurrentStageIdx] = useState<number>(0);
   const stage = CSS_STAGES[currentStageIdx] || CSS_STAGES[0];
 
@@ -435,28 +440,48 @@ export default function CSSLab() {
 
   useEffect(() => {
     const saved = localStorage.getItem(`css_lab_stage_${stage.id}_code`);
-    setUserCss(saved || stage.initialCss);
-    checkPass(saved || stage.initialCss, false);
+    const initial = saved || stage.initialCss;
+    setUserCss(initial);
+    setIsPassed(false);
     setShowHintModal(false);
     setShowAnswerModal(false);
-  }, [currentStageIdx]);
+  }, [currentStageIdx, stage]);
 
-  const checkPass = (code: string, triggerPopup = true) => {
-    const passed = stage.checkCondition(code.replace(/\s+/g, ''));
+  // 💡 リアルタイム同期ロジック（ポーリング対応で別ウィンドウにも秒速反映）
+  useEffect(() => {
+    if (!isPreviewOnly) {
+      localStorage.setItem(`css_lab_stage_${stage.id}_sync_code`, userCss);
+    }
+  }, [userCss, isPreviewOnly, stage.id]);
+
+  useEffect(() => {
+    if (isPreviewOnly) {
+      const interval = setInterval(() => {
+        const synced = localStorage.getItem(`css_lab_stage_${stage.id}_sync_code`);
+        if (synced !== null && synced !== userCss) {
+          setUserCss(synced);
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [isPreviewOnly, stage.id, userCss]);
+
+  // 💡 「コードを判定する」ボタンを押したときの処理
+  const handleManualCheck = () => {
+    const passed = stage.checkCondition(userCss.replace(/\s+/g, ''));
     if (passed) {
-      if (!isPassed && triggerPopup) {
+      setIsPassed(true);
+      if (!isPreviewOnly) {
         setShowModal(true);
       }
-      setIsPassed(true);
     } else {
       setIsPassed(false);
+      alert("❌ まだ条件を満たしていません。コードやヒントを確認してください。");
     }
   };
 
   const handleEditorChange = (val: string | undefined) => {
-    const code = val || '';
-    setUserCss(code);
-    checkPass(code, true);
+    setUserCss(val || '');
   };
 
   const handleSave = () => {
@@ -469,7 +494,7 @@ export default function CSSLab() {
     if (window.confirm("このステージのコードを初期状態に戻しますか？")) {
       localStorage.removeItem(storageKey);
       setUserCss(stage.initialCss);
-      checkPass(stage.initialCss, false);
+      setIsPassed(false);
       setSaveNotification("🗑️ 初期化しました");
       setTimeout(() => setSaveNotification(""), 2000);
     }
@@ -480,6 +505,46 @@ export default function CSSLab() {
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
+
+  // 🚀 ポップアップ（プレビュー専用）モードの場合
+  if (isPreviewOnly) {
+    return (
+      <div className="flex flex-col h-full w-full bg-[#141414] text-white">
+        <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0 font-mono">
+          <span className="flex items-center gap-1.5">🌐 LIVE PREVIEW MONITOR (CSS DOJO)</span>
+          <span className="text-[9px] bg-emerald-600/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 animate-pulse">
+            リアルタイム同期中
+          </span>
+        </div>
+        <div className="flex-1 p-6 bg-[#1a1a1a] flex items-center justify-center overflow-auto">
+          <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300 w-full max-w-md h-80">
+            <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
+              🖥️ あなたのプレビュー結果
+            </div>
+            <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
+              <style>{`
+                .target-box {
+                  width: 220px;
+                  height: 110px;
+                  background-color: #3b82f6;
+                  border-radius: 12px;
+                  color: #fff;
+                  font-weight: bold;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                }
+                ${userCss}
+              `}</style>
+              <div className="target-box">
+                Your Element
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full bg-[#1e1e1e] text-white font-sans overflow-hidden relative">
@@ -542,7 +607,7 @@ export default function CSSLab() {
         </div>
       )}
 
-      {/* 👁️ 正解コード確認・表示モーダル (自動反映なし・自分で書くスタイル) */}
+      {/* 👁️ 正解コード確認・表示モーダル */}
       {showAnswerModal && (
         <div className="absolute inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
           <div className="bg-[#252526] border border-rose-500/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl flex flex-col">
@@ -638,15 +703,21 @@ export default function CSSLab() {
             </button>
           </div>
 
-          <div className="border-t border-[#3c3c3c] pt-3">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">判定ステータス</span>
+          <div className="border-t border-[#3c3c3c] pt-3 space-y-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">判定ステータス</span>
+            <button
+              onClick={handleManualCheck}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+            >
+              <CheckCircle2 size={15} /> コードを判定する
+            </button>
             {isPassed ? (
               <div className="bg-emerald-950/60 border border-emerald-800 text-emerald-400 p-3 rounded-lg flex items-center gap-2 font-bold animate-pulse">
                 <CheckCircle2 size={18} /> Accepted (AC) - 合格！
               </div>
             ) : (
               <div className="bg-amber-950/40 border border-amber-800/60 text-amber-400 p-3 rounded-lg flex items-center gap-2 font-bold">
-                ✍️ Writing Code... (要件未達)
+                ✍️ 未判定 / 要件未達
               </div>
             )}
           </div>
@@ -654,7 +725,7 @@ export default function CSSLab() {
       </div>
 
       {/* 💻 中央カラム：CSSエディタ */}
-      <div className="w-[420px] bg-[#252526] flex flex-col h-full border-r border-[#3c3c3c] shrink-0">
+      <div className={`flex flex-col h-full border-r border-[#3c3c3c] shrink-0 bg-[#252526] ${isPreviewHidden ? 'flex-1' : 'w-[420px]'}`}>
         <div className="bg-[#2d2d2d] border-b border-[#3c3c3c] px-4 py-2 text-xs font-bold text-amber-400 flex justify-between items-center">
           <span>✍️ CSS Editor (style.css)</span>
           <span className="text-[10px] text-gray-400 font-mono">Monaco Editor</span>
@@ -670,65 +741,75 @@ export default function CSSLab() {
               fontSize: 12,
               minimap: { enabled: false },
               wordWrap: 'on',
+              formatOnType: true,
+              formatOnPaste: true,
             }}
           />
         </div>
       </div>
 
-      {/* 🖼️ 右カラム：ターゲット vs ライブプレビュー */}
-      <div className="flex-1 bg-[#141414] flex flex-col h-full overflow-hidden">
-        <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
-          <span>👀 ターゲット (お手本) ＆ プレビュー比較</span>
-          <span className="text-[10px] text-indigo-400 font-mono">Live Judge System</span>
-        </div>
+      {/* 🖼️ 右カラム：ターゲット vs ライブプレビュー（※ isPreviewHidden が true の時は消える！） */}
+      {!isPreviewHidden && (
+        <div className="flex-1 bg-[#141414] flex flex-col h-full overflow-hidden">
+          <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
+            <span>👀 ターゲット (お手本) ＆ プレビュー比較</span>
+            <span className="text-[10px] text-indigo-400 font-mono">Live Judge System</span>
+          </div>
 
-        <div className="flex-1 p-6 grid grid-rows-2 gap-4 bg-[#1a1a1a] overflow-auto">
-          {/* お手本ビュー */}
-          <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
-            <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
-              ✨ ターゲット（目指す見た目）
+          <div className="flex-1 p-6 grid grid-rows-2 gap-4 bg-[#1a1a1a] overflow-auto">
+            {/* お手本ビュー */}
+            <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
+              <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
+                ✨ ターゲット（目指す見た目）
+              </div>
+              <div className="flex-1 flex items-center justify-center p-6 bg-slate-50">
+                <div 
+                  style={{
+                    width: '220px',
+                    height: '110px',
+                    backgroundColor: '#3b82f6',
+                    borderRadius: '12px',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    ...stage.targetStyle
+                  }}
+                >
+                  Target Element
+                </div>
+              </div>
             </div>
-            <div className="flex-1 flex items-center justify-center p-6 bg-slate-50">
-              <div 
-                style={{
-                  width: '220px',
-                  height: '110px',
-                  backgroundColor: '#3b82f6',
-                  borderRadius: '12px',
-                  color: '#fff',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  ...stage.targetStyle
-                }}
-              >
-                Target Element
+
+            {/* ユーザーのプレビュー */}
+            <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
+              <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
+                🖥️ あなたのプレビュー結果
+              </div>
+              <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
+                <style>{`
+                  .target-box {
+                    width: 220px;
+                    height: 110px;
+                    background-color: #3b82f6;
+                    border-radius: 12px;
+                    color: #fff;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  }
+                  ${userCss}
+                `}</style>
+                <div className="target-box">
+                  Your Element
+                </div>
               </div>
             </div>
           </div>
-
-          {/* ユーザーのプレビュー */}
-          <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-gray-300">
-            <div className="bg-slate-100 text-slate-700 text-[10px] font-bold px-3 py-1 border-b border-slate-200">
-              🖥️ あなたのプレビュー結果
-            </div>
-            <div className="flex-1 flex items-center justify-center p-6 bg-slate-50">
-              <div 
-                className="target-box"
-                style={{
-                  width: '220px',
-                  height: '110px',
-                  backgroundColor: '#3b82f6',
-                  borderRadius: '12px',
-                  color: '#fff',
-                  fontWeight: 'bold',
-                }}
-              >
-                Your Element
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
+      )}
 
     </div>
   );

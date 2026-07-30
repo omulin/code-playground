@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { RefreshCw, CheckCircle2, Code2, Sliders, Layers, Globe, ShieldCheck, Zap } from 'lucide-react';
+import { RefreshCw, CheckCircle2, Layers, Globe, ShieldCheck, Zap, Sliders } from 'lucide-react';
 
 interface LPSection {
   id: string;
@@ -16,7 +16,12 @@ interface LPSection {
   subText: string;
 }
 
-export default function ConnectionLab() {
+export interface ConnectionLabProps {
+  isPreviewOnly?: boolean;
+  isPreviewHidden?: boolean;
+}
+
+export default function ConnectionLab({ isPreviewOnly = false, isPreviewHidden = false }: ConnectionLabProps) {
   const [sections, setSections] = useState<LPSection[]>([
     {
       id: 'header',
@@ -95,6 +100,30 @@ export default function ConnectionLab() {
 
   const selectedSection = sections.find(s => s.id === selectedId) || sections[1];
 
+  // 💡 リアルタイム同期ロジック（メイン画面 ⇄ ポップアップ画面）
+  useEffect(() => {
+    if (!isPreviewOnly) {
+      localStorage.setItem('connection_lab_sync_sections', JSON.stringify(sections));
+    }
+  }, [sections, isPreviewOnly]);
+
+  useEffect(() => {
+    if (isPreviewOnly) {
+      const saved = localStorage.getItem('connection_lab_sync_sections');
+      if (saved) {
+        try { setSections(JSON.parse(saved)); } catch (e) {}
+      }
+
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === 'connection_lab_sync_sections' && e.newValue) {
+          try { setSections(JSON.parse(e.newValue)); } catch (e) {}
+        }
+      };
+      window.addEventListener('storage', handleStorage);
+      return () => window.removeEventListener('storage', handleStorage);
+    }
+  }, [isPreviewOnly]);
+
   const handleUpdate = (key: keyof LPSection, value: any) => {
     setSections(sections.map(s => {
       if (s.id === selectedId) {
@@ -154,7 +183,6 @@ export default function ConnectionLab() {
     highlightTargetCode(selectedId, codeTab);
   };
 
-  // 選択されたパーツに対応する行をハイライト（色を変える）する関数
   const highlightTargetCode = (id: string, tab: 'css' | 'html') => {
     if (!editorRef.current || !monacoRef.current || !decorationsCollection.current) return;
     const model = editorRef.current.getModel();
@@ -189,13 +217,12 @@ export default function ConnectionLab() {
           endLine = j + 1;
           if (tab === 'css' && lines[j].includes('}')) break;
           if (tab === 'html' && lines[j].includes('</')) break;
-          if (tab === 'html' && j === i) break; // 単行の場合
+          if (tab === 'html' && j === i) break;
         }
         break;
       }
     }
 
-    // エディタ内にハイライトのデコレーション（背景色と左線の強調）を適用
     decorationsCollection.current.set([
       {
         range: new monacoRef.current.Range(startLine, 1, endLine, lines[endLine - 1]?.length + 1 || 1),
@@ -209,10 +236,106 @@ export default function ConnectionLab() {
     editorRef.current.revealLineInCenter(startLine);
   };
 
-  // 選択変更時やタブ変更時にハイライトを自動更新
   useEffect(() => {
     highlightTargetCode(selectedId, codeTab);
   }, [selectedId, codeTab, sections]);
+
+  // 🚀 ポップアップ（プレビュー専用）モードの場合
+  if (isPreviewOnly) {
+    return (
+      <div className="flex flex-col h-full w-full bg-[#111113] text-white overflow-hidden">
+        <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
+          <span className="flex items-center gap-1.5"><Globe size={14} className="text-sky-400" /> ライブWebサイト・プレビューモニター</span>
+          <span className="text-[9px] bg-emerald-600/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 animate-pulse">
+            リアルタイム同期中
+          </span>
+        </div>
+        <div className="flex-1 p-8 overflow-y-auto flex justify-center bg-[#111113]">
+          <div className="w-full max-w-2xl bg-white text-slate-900 rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col my-auto">
+            <div className="bg-gray-100 px-4 py-2.5 border-b border-gray-200 flex items-center gap-2 select-none">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-rose-400"></div>
+                <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+                <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+              </div>
+              <div className="mx-auto bg-white px-4 py-0.5 rounded-md text-[11px] text-gray-500 font-mono border border-gray-200 w-64 text-center truncate">
+                https://nextgen-cloud.example.com
+              </div>
+            </div>
+
+            {sections.map(s => (
+              <div
+                key={s.id}
+                style={{
+                  backgroundColor: s.bg,
+                  color: s.color,
+                  padding: s.padding,
+                  borderRadius: s.borderRadius,
+                  boxShadow: s.boxShadow,
+                  textAlign: s.align,
+                }}
+                className="relative"
+              >
+                {s.id === 'header' && (
+                  <div className="flex justify-between items-center w-full">
+                    <div className="font-black text-base">{s.text}</div>
+                    <div className="text-xs opacity-70 font-medium hidden sm:block">{s.subText}</div>
+                  </div>
+                )}
+                {s.id === 'hero' && (
+                  <div className="py-4 space-y-4">
+                    <h1 className="text-2xl md:text-3xl font-black tracking-tight">{s.text}</h1>
+                    <p className="text-sm opacity-80 max-w-md mx-auto">{s.subText}</p>
+                    <div className="pt-2 flex justify-center gap-3">
+                      <span className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow">無料で始める</span>
+                      <span className="bg-white/10 text-white px-5 py-2 rounded-lg text-xs font-bold border border-white/20">詳細を見る</span>
+                    </div>
+                  </div>
+                )}
+                {s.id === 'features' && (
+                  <div className="space-y-4">
+                    <h3 className="font-black text-lg mb-4">{s.text}</h3>
+                    <div className="grid grid-cols-3 gap-3 text-left">
+                      <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="text-indigo-600 mb-1"><Zap size={16} /></div>
+                        <div className="font-bold text-xs">超高速描画</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">瞬時に反映されるライブプレビュー</div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="text-indigo-600 mb-1"><ShieldCheck size={16} /></div>
+                        <div className="font-bold text-xs">安全な設計</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">ロバストな型安全性とエラー防止</div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="text-indigo-600 mb-1"><Layers size={16} /></div>
+                        <div className="font-bold text-xs">柔軟な拡張</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">パーツの組み合わせは無限大</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {s.id === 'cta' && (
+                  <div className="space-y-3 py-2">
+                    <h2 className="text-xl font-black">{s.text}</h2>
+                    <p className="text-xs opacity-90">{s.subText}</p>
+                    <div className="inline-block bg-white text-indigo-900 font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg mt-2">
+                      今すぐアカウントを作成 ➔
+                    </div>
+                  </div>
+                )}
+                {s.id === 'footer' && (
+                  <div className="flex flex-col sm:flex-row justify-between items-center text-xs gap-2">
+                    <div>{s.text}</div>
+                    <div className="opacity-75">{s.subText}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full bg-[#1e1e1e] text-white font-sans overflow-hidden">
@@ -251,115 +374,117 @@ export default function ConnectionLab() {
         </div>
       </div>
 
-      {/* 中央カラム：リアルなLPプレビュー */}
-      <div className="flex-1 bg-[#141414] flex flex-col h-full border-r border-[#3c3c3c] overflow-hidden">
-        <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
-          <span className="flex items-center gap-1.5"><Globe size={14} className="text-sky-400" /> ライブWebサイト・プレビュー</span>
-          <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-            <CheckCircle2 size={12} /> リアルタイム連動中
-          </span>
-        </div>
+      {/* 中央カラム：リアルなLPプレビュー（※ isPreviewHidden が true の時は消える！） */}
+      {!isPreviewHidden && (
+        <div className="flex-1 bg-[#141414] flex flex-col h-full border-r border-[#3c3c3c] overflow-hidden">
+          <div className="bg-[#252526] px-4 py-2 border-b border-[#3c3c3c] text-xs font-bold text-gray-400 flex justify-between items-center shrink-0">
+            <span className="flex items-center gap-1.5"><Globe size={14} className="text-sky-400" /> ライブWebサイト・プレビュー</span>
+            <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+              <CheckCircle2 size={12} /> リアルタイム連動中
+            </span>
+          </div>
 
-        <div className="flex-1 p-8 overflow-y-auto flex justify-center bg-[#111113]">
-          <div className="w-full max-w-2xl bg-white text-slate-900 rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col my-auto">
-            
-            <div className="bg-gray-100 px-4 py-2.5 border-b border-gray-200 flex items-center gap-2 select-none">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-rose-400"></div>
-                <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
-              </div>
-              <div className="mx-auto bg-white px-4 py-0.5 rounded-md text-[11px] text-gray-500 font-mono border border-gray-200 w-64 text-center truncate">
-                https://nextgen-cloud.example.com
-              </div>
-            </div>
-
-            {sections.map(s => {
-              const isSel = selectedId === s.id;
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => setSelectedId(s.id)}
-                  style={{
-                    backgroundColor: s.bg,
-                    color: s.color,
-                    padding: s.padding,
-                    borderRadius: s.borderRadius,
-                    boxShadow: s.boxShadow,
-                    textAlign: s.align,
-                  }}
-                  className={`cursor-pointer transition-all relative group ${
-                    isSel ? 'ring-4 ring-indigo-500 ring-inset z-10' : 'hover:opacity-95'
-                  }`}
-                >
-                  <div className="absolute top-2 right-3 text-[9px] font-mono uppercase bg-black/10 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    クリックして選択 ({s.tag})
-                  </div>
-
-                  {s.id === 'header' && (
-                    <div className="flex justify-between items-center w-full">
-                      <div className="font-black text-base">{s.text}</div>
-                      <div className="text-xs opacity-70 font-medium hidden sm:block">{s.subText}</div>
-                    </div>
-                  )}
-
-                  {s.id === 'hero' && (
-                    <div className="py-4 space-y-4">
-                      <h1 className="text-2xl md:text-3xl font-black tracking-tight">{s.text}</h1>
-                      <p className="text-sm opacity-80 max-w-md mx-auto">{s.subText}</p>
-                      <div className="pt-2 flex justify-center gap-3">
-                        <span className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow">無料で始める</span>
-                        <span className="bg-white/10 text-white px-5 py-2 rounded-lg text-xs font-bold border border-white/20">詳細を見る</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {s.id === 'features' && (
-                    <div className="space-y-4">
-                      <h3 className="font-black text-lg mb-4">{s.text}</h3>
-                      <div className="grid grid-cols-3 gap-3 text-left">
-                        <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                          <div className="text-indigo-600 mb-1"><Zap size={16} /></div>
-                          <div className="font-bold text-xs">超高速描画</div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">瞬時に反映されるライブプレビュー</div>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                          <div className="text-indigo-600 mb-1"><ShieldCheck size={16} /></div>
-                          <div className="font-bold text-xs">安全な設計</div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">ロバストな型安全性とエラー防止</div>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                          <div className="text-indigo-600 mb-1"><Layers size={16} /></div>
-                          <div className="font-bold text-xs">柔軟な拡張</div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">パーツの組み合わせは無限大</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {s.id === 'cta' && (
-                    <div className="space-y-3 py-2">
-                      <h2 className="text-xl font-black">{s.text}</h2>
-                      <p className="text-xs opacity-90">{s.subText}</p>
-                      <div className="inline-block bg-white text-indigo-900 font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg mt-2">
-                        今すぐアカウントを作成 ➔
-                      </div>
-                    </div>
-                  )}
-
-                  {s.id === 'footer' && (
-                    <div className="flex flex-col sm:flex-row justify-between items-center text-xs gap-2">
-                      <div>{s.text}</div>
-                      <div className="opacity-75">{s.subText}</div>
-                    </div>
-                  )}
+          <div className="flex-1 p-8 overflow-y-auto flex justify-center bg-[#111113]">
+            <div className="w-full max-w-2xl bg-white text-slate-900 rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col my-auto">
+              
+              <div className="bg-gray-100 px-4 py-2.5 border-b border-gray-200 flex items-center gap-2 select-none">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-rose-400"></div>
+                  <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+                  <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
                 </div>
-              );
-            })}
+                <div className="mx-auto bg-white px-4 py-0.5 rounded-md text-[11px] text-gray-500 font-mono border border-gray-200 w-64 text-center truncate">
+                  https://nextgen-cloud.example.com
+                </div>
+              </div>
 
+              {sections.map(s => {
+                const isSel = selectedId === s.id;
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => setSelectedId(s.id)}
+                    style={{
+                      backgroundColor: s.bg,
+                      color: s.color,
+                      padding: s.padding,
+                      borderRadius: s.borderRadius,
+                      boxShadow: s.boxShadow,
+                      textAlign: s.align,
+                    }}
+                    className={`cursor-pointer transition-all relative group ${
+                      isSel ? 'ring-4 ring-indigo-500 ring-inset z-10' : 'hover:opacity-95'
+                    }`}
+                  >
+                    <div className="absolute top-2 right-3 text-[9px] font-mono uppercase bg-black/10 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      クリックして選択 ({s.tag})
+                    </div>
+
+                    {s.id === 'header' && (
+                      <div className="flex justify-between items-center w-full">
+                        <div className="font-black text-base">{s.text}</div>
+                        <div className="text-xs opacity-70 font-medium hidden sm:block">{s.subText}</div>
+                      </div>
+                    )}
+
+                    {s.id === 'hero' && (
+                      <div className="py-4 space-y-4">
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tight">{s.text}</h1>
+                        <p className="text-sm opacity-80 max-w-md mx-auto">{s.subText}</p>
+                        <div className="pt-2 flex justify-center gap-3">
+                          <span className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow">無料で始める</span>
+                          <span className="bg-white/10 text-white px-5 py-2 rounded-lg text-xs font-bold border border-white/20">詳細を見る</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {s.id === 'features' && (
+                      <div className="space-y-4">
+                        <h3 className="font-black text-lg mb-4">{s.text}</h3>
+                        <div className="grid grid-cols-3 gap-3 text-left">
+                          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="text-indigo-600 mb-1"><Zap size={16} /></div>
+                            <div className="font-bold text-xs">超高速描画</div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">瞬時に反映されるライブプレビュー</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="text-indigo-600 mb-1"><ShieldCheck size={16} /></div>
+                            <div className="font-bold text-xs">安全な設計</div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">ロバストな型安全性とエラー防止</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="text-indigo-600 mb-1"><Layers size={16} /></div>
+                            <div className="font-bold text-xs">柔軟な拡張</div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">パーツの組み合わせは無限大</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {s.id === 'cta' && (
+                      <div className="space-y-3 py-2">
+                        <h2 className="text-xl font-black">{s.text}</h2>
+                        <p className="text-xs opacity-90">{s.subText}</p>
+                        <div className="inline-block bg-white text-indigo-900 font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg mt-2">
+                          今すぐアカウントを作成 ➔
+                        </div>
+                      </div>
+                    )}
+
+                    {s.id === 'footer' && (
+                      <div className="flex flex-col sm:flex-row justify-between items-center text-xs gap-2">
+                        <div>{s.text}</div>
+                        <div className="opacity-75">{s.subText}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 右カラム：いじるパレット ＆ HTML/CSSタブ付きコード出力 */}
       <div className="w-96 bg-[#252526] flex flex-col h-full shrink-0">

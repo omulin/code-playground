@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
-  "productName": "CodePlayground",
+  "productName": "codeplayground",
   "version": "0.1.0",
   "identifier": "com.omulin.codeplayground",
   "build": {
@@ -9,7 +9,7 @@
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
-  "app": {
+ "app": {
     "windows": [
       {
         "title": "CodePlayground",
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' http://localhost:5174; frame-src 'self' https://playground.wordpress.net; connect-src 'self' https://playground.wordpress.net; img-src 'self' data: https:;"
+      "csp": "default-src 'self' http://localhost:5174 https://cdn.jsdelivr.net; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://playground.wordpress.net https://cdn.jsdelivr.net; frame-src 'self' blob: data: https://playground.wordpress.net; img-src 'self' data: https:; worker-src 'self' blob: https://cdn.jsdelivr.net;"
     }
   },
   "bundle": {
@@ -32,6 +32,11 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "wix": {
+        "language": "ja-JP"
+      }
+    }
   }
 }

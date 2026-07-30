@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { Sparkles } from 'lucide-react';
-// クリーンに型とデータを読み込み
+// 👑 合体済みの TRACE_STAGES と 型 を読み込む
 import type { TraceStage, TracePage } from './traceTypes';
 import { TRACE_STAGES } from './traceData';
 
-export default function TraceLab() {
+// 💡 外部（App.tsx）から受け取るプロパティの型定義
+export interface TraceLabProps {
+  isPreviewOnly?: boolean;
+  isPreviewHidden?: boolean;
+}
+
+export default function TraceLab({ isPreviewOnly = false, isPreviewHidden = false }: TraceLabProps) {
   const [currentStageIdx, setCurrentStageIdx] = useState<number>(0);
-  const stage: TraceStage = TRACE_STAGES[currentStageIdx] || TRACE_STAGES[0];
+  const stage: TraceStage | undefined = TRACE_STAGES[currentStageIdx];
 
   const [userCodes, setUserCodes] = useState<Record<string, string>>({});
   const [activeFileName, setActiveFileName] = useState<string>('index.html');
@@ -16,9 +22,13 @@ export default function TraceLab() {
   const [showCompleteModal, setShowCompleteModal] = useState<boolean>(false);
   const [saveNotification, setSaveNotification] = useState<string>('');
 
+  if (!stage) {
+    return <div className="w-full h-full flex items-center justify-center bg-[#1e1e1e] text-rose-500">ステージデータの読み込みに失敗しました。</div>;
+  }
+
   // 💡 ステージ変更時、またはローカルストレージからの復元
   useEffect(() => {
-    if (!stage || !stage.pages || stage.pages.length === 0) return;
+    if (!stage.pages || stage.pages.length === 0) return;
 
     const storageKey = `trace_lab_stage_${stage.id}_codes`;
     const savedCodes = localStorage.getItem(storageKey);
@@ -48,9 +58,35 @@ export default function TraceLab() {
     setBrowserPath(firstTarget);
     setShowCompleteModal(false);
 
-    // クリア判定の初期チェック（保存データですでにクリアしている場合はポップアップは出さない）
+    // クリア判定の初期チェック
     checkIfPassed(initialCodes, false);
-  }, [currentStageIdx]);
+  }, [currentStageIdx, stage]);
+
+  // 💡 リアルタイム同期ロジック（メイン画面とポップアップ画面の通信）
+  useEffect(() => {
+    if (!isPreviewOnly) {
+      localStorage.setItem('trace_lab_sync_codes', JSON.stringify(userCodes));
+    }
+  }, [userCodes, isPreviewOnly]);
+
+  useEffect(() => {
+    if (isPreviewOnly) {
+      const syncedCodes = localStorage.getItem('trace_lab_sync_codes');
+      if (syncedCodes) {
+        try {
+          setUserCodes(JSON.parse(syncedCodes));
+        } catch (e) {}
+      }
+
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'trace_lab_sync_codes' && e.newValue) {
+          setUserCodes(JSON.parse(e.newValue));
+        }
+      };
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }
+  }, [isPreviewOnly]);
 
   // 💡 完璧な正誤判定ロジック
   const checkIfPassed = (codes: Record<string, string>, triggerPopup = true) => {
@@ -64,8 +100,8 @@ export default function TraceLab() {
     });
 
     if (allMatch) {
-      if (!isPassed && triggerPopup) {
-        setShowCompleteModal(true); // 初めてクリアした瞬間にポップアップ表示
+      if (!isPassed && triggerPopup && !isPreviewOnly) {
+        setShowCompleteModal(true);
       }
       setIsPassed(true);
     } else {
@@ -188,6 +224,40 @@ export default function TraceLab() {
     );
   };
 
+  // 🚀 【追加】もし「プレビュー専用モード（ポップアップ）」なら、プレビュー画面だけを全画面で返す
+  if (isPreviewOnly) {
+    return (
+      <div className="w-full h-full flex flex-col overflow-hidden bg-[#141414] text-white">
+        <div className="bg-[#252526] text-slate-300 font-bold text-[10px] px-3 py-1.5 uppercase tracking-wider select-none shrink-0 border-b border-[#3c3c3c] flex justify-between items-center font-mono">
+          <div className="flex items-center gap-2">
+            <span>🌐 LIVE PREVIEW MONITOR</span>
+            <span className="text-[9px] bg-emerald-600/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 animate-pulse">
+              リアルタイム同期中
+            </span>
+          </div>
+          <div className="flex gap-1">
+            {stage.pages.map((p: TracePage) => (
+              <button 
+                key={`browser-btn-popup-${p.fileName}`}
+                onClick={() => setBrowserPath(p.fileName)} 
+                className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold border transition cursor-pointer ${
+                  browserPath === p.fileName 
+                    ? 'bg-sky-600 text-white border-sky-400 shadow' 
+                    : 'bg-[#2d2d2d] text-slate-400 border-transparent hover:bg-[#333]'
+                }`}
+              >
+                {p.fileName}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 bg-slate-900/20 p-0 flex flex-col h-full overflow-hidden">
+          {renderVirtualBrowser()}
+        </div>
+      </div>
+    );
+  }
+
   const getActivePage = (): TracePage => {
     if (stage && stage.pages && stage.pages.length > 0) {
       const found = stage.pages.find(p => p.fileName === activeFileName);
@@ -204,7 +274,7 @@ export default function TraceLab() {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-[#1e1e1e] text-white font-sans select-none relative">
       
-      {/* 🎉 クリアお祝いポップアップ（モーダル） */}
+      {/* 🎉 クリアお祝いポップアップ */}
       {showCompleteModal && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 animate-fadeIn">
           <div className="bg-[#252526] border border-[#3c3c3c] rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl flex flex-col items-center text-center">
@@ -233,7 +303,7 @@ export default function TraceLab() {
         </div>
       )}
 
-      {/* 🚀 最上部ヘッダー（タイトル＆ミッション） */}
+      {/* 🚀 ヘッダー */}
       <div className="bg-[#2d2d2d] border-b border-[#3c3c3c] px-4 py-2 flex items-center justify-between shrink-0 w-full">
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-black bg-amber-600 text-white px-2 py-0.5 rounded font-mono tracking-wider shadow">TRACE STADIUM</span>
@@ -244,7 +314,7 @@ export default function TraceLab() {
         </div>
       </div>
 
-      {/* 🧭 コントロールバー（ステージ選択 ＆ 一時保存） */}
+      {/* 🧭 コントロールバー */}
       <div className="bg-[#252526] border-b border-[#3c3c3c] px-4 py-1.5 flex items-center justify-between text-xs shrink-0 w-full">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-[#858585] uppercase font-mono tracking-wide">STAGE SELECT:</span>
@@ -253,7 +323,7 @@ export default function TraceLab() {
             onChange={(e) => setCurrentStageIdx(parseInt(e.target.value, 10))}
             className="bg-[#1e1e1e] text-amber-300 text-xs font-bold px-3 py-1 rounded border border-[#444] cursor-pointer outline-none shadow-sm"
           >
-            {TRACE_STAGES.map((s, idx) => (
+            {TRACE_STAGES.map((s: TraceStage, idx: number) => (
               <option key={`stage-opt-${s.id}-${idx}`} value={idx}>
                 STAGE {s.id}: {s.title}
               </option>
@@ -285,7 +355,7 @@ export default function TraceLab() {
 
       {/* 📑 サブファイル用：子タブバー */}
       <div className="bg-[#2d2d2d] flex border-b border-[#1e1e1e] text-xs text-slate-400 select-none overflow-x-auto shrink-0 w-full">
-        {stage.pages.map((p, pIdx) => (
+        {stage.pages.map((p: TracePage, pIdx: number) => (
           <button
             key={`tab-btn-${p.fileName}-${pIdx}`}
             onClick={() => setActiveFileName(p.fileName)}
@@ -308,8 +378,8 @@ export default function TraceLab() {
         </div>
       </div>
 
-      {/* 🖥️ メインコンテンツ：3カラムレイアウト（縦幅をフル活用） */}
-      <div className="flex-1 w-full grid grid-cols-3 gap-0 overflow-hidden bg-[#141414] h-full">
+      {/* 🖥️ メインコンテンツ：3カラムレイアウト（※プレビュー非表示時は2カラムに変化！） */}
+      <div className={`flex-1 w-full grid ${isPreviewHidden ? 'grid-cols-2' : 'grid-cols-3'} gap-0 overflow-hidden bg-[#141414] h-full`}>
         
         {/* ① 左：[見本コード (SPEC)] */}
         <div className="flex flex-col h-full overflow-hidden border-r border-[#3c3c3c] bg-[#0a0a0a]">
@@ -355,30 +425,32 @@ export default function TraceLab() {
           </div>
         </div>
 
-        {/* ③ 右：[ライブプレビュー (LIVE PREVIEW)] */}
-        <div className="flex flex-col h-full overflow-hidden bg-[#141414]">
-          <div className="bg-[#252526] text-slate-300 font-bold text-[10px] px-3 py-1.5 uppercase tracking-wider select-none shrink-0 border-b border-[#3c3c3c] flex justify-between items-center font-mono">
-            <span>🌐 LIVE PREVIEW</span>
-            <div className="flex gap-1">
-              {stage.pages.map(p => (
-                <button 
-                  key={`browser-btn-${p.fileName}`}
-                  onClick={() => setBrowserPath(p.fileName)} 
-                  className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold border transition cursor-pointer ${
-                    browserPath === p.fileName 
-                      ? 'bg-sky-600 text-white border-sky-400 shadow' 
-                      : 'bg-[#2d2d2d] text-slate-400 border-transparent hover:bg-[#333]'
-                  }`}
-                >
-                  {p.fileName}
-                </button>
-              ))}
+        {/* ③ 右：[ライブプレビュー]（※ isPreviewHidden が true の時は消える！） */}
+        {!isPreviewHidden && (
+          <div className="flex flex-col h-full overflow-hidden bg-[#141414]">
+            <div className="bg-[#252526] text-slate-300 font-bold text-[10px] px-3 py-1.5 uppercase tracking-wider select-none shrink-0 border-b border-[#3c3c3c] flex justify-between items-center font-mono">
+              <span>🌐 LIVE PREVIEW</span>
+              <div className="flex gap-1">
+                {stage.pages.map((p: TracePage) => (
+                  <button 
+                    key={`browser-btn-${p.fileName}`}
+                    onClick={() => setBrowserPath(p.fileName)} 
+                    className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold border transition cursor-pointer ${
+                      browserPath === p.fileName 
+                        ? 'bg-sky-600 text-white border-sky-400 shadow' 
+                        : 'bg-[#2d2d2d] text-slate-400 border-transparent hover:bg-[#333]'
+                    }`}
+                  >
+                    {p.fileName}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-900/20 p-0 flex flex-col h-full overflow-hidden">
+              {renderVirtualBrowser()}
             </div>
           </div>
-          <div className="flex-1 bg-slate-900/20 p-0 flex flex-col h-full overflow-hidden">
-            {renderVirtualBrowser()}
-          </div>
-        </div>
+        )}
 
       </div>
 
